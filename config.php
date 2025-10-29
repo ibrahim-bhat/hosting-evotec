@@ -1,9 +1,16 @@
 <?php
 // Database Configuration
+if ($_SERVER['SERVER_NAME'] == 'localhost') {
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_NAME', 'hosting');
+} else {
+    define('DB_HOST', 'localhost');
+    define('DB_USER', 'u210720206_hosting');
+    define('DB_PASS', 'Evotec123@hosting');
+    define('DB_NAME', 'u210720206_hosting');
+}
 
 // Site Configuration
 define('SITE_URL', 'http://localhost/hosting');
@@ -73,3 +80,4 @@ if ($stmt) {
 }
 define('SESSION_LIFETIME', $sessionTimeoutMinutes * 60); // Convert minutes to seconds
 ?>
+
