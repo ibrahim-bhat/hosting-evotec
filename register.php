@@ -134,11 +134,10 @@ include 'includes/header.php';
                 <button type="submit" class="btn btn-primary btn-signin">Sign up</button>
                 
                 <!-- Divider -->
-                <div class="divider">
+                <!-- <div class="divider">
                     <span class="divider-text">OR CONTINUE WITH</span>
                 </div>
                 
-                <!-- Google Sign Up -->
                 <button type="button" class="btn btn-google">
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M17.64 9.20443C17.64 8.56625 17.5827 7.95262 17.4764 7.36353H9V10.8449H13.8436C13.635 11.9699 13.0009 12.9231 12.0477 13.5613V15.8194H14.9564C16.6582 14.2526 17.64 11.9453 17.64 9.20443Z" fill="#4285F4"/>
@@ -147,7 +146,7 @@ include 'includes/header.php';
                         <path d="M8.99976 3.57955C10.3211 3.57955 11.5075 4.03364 12.4402 4.92545L15.0216 2.34409C13.4629 0.891818 11.4257 0 8.99976 0C5.48158 0 2.43794 2.01682 0.957031 4.95818L3.96385 7.29C4.67158 5.16273 6.65567 3.57955 8.99976 3.57955Z" fill="#EA4335"/>
                     </svg>
                     Continue with Google
-                </button>
+                </button> -->
                 
                 <!-- Sign In Link -->
                 <p class="signup-text">
