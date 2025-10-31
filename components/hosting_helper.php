@@ -192,11 +192,22 @@ function getPackagePrice($package, $billingCycle) {
 }
 
 /**
- * Calculate order total with taxes and fees (using global settings)
+ * Calculate order total with taxes and fees (using global settings or legacy parameters)
  */
-function calculateOrderTotal($conn, $basePrice) {
+function calculateOrderTotal(...$args) {
     require_once __DIR__ . '/payment_settings_helper.php';
-    return calculateOrderTotalWithGlobalSettings($conn, $basePrice);
+    
+    // Handle both old (4 params) and new (2 params) signatures for backward compatibility
+    if (count($args) === 4) {
+        // Legacy signature: calculateOrderTotal($basePrice, $setupFee, $gstPercentage, $processingFee)
+        return calculateOrderTotalLegacy($args[0], $args[1], $args[2], $args[3]);
+    } else if (count($args) === 2) {
+        // New signature: calculateOrderTotal($conn, $basePrice)
+        return calculateOrderTotalWithGlobalSettings($args[0], $args[1]);
+    }
+    
+    // Default to legacy if called with wrong number of params
+    return ['total_amount' => 0, 'base_price' => 0, 'setup_fee' => 0, 'gst_amount' => 0, 'processing_fee' => 0, 'subtotal' => 0];
 }
 
 /**
