@@ -21,20 +21,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'slug' => sanitizeInput($_POST['slug']),
                 'description' => sanitizeInput($_POST['description']),
                 'short_description' => sanitizeInput($_POST['short_description']),
-                'price_monthly' => floatval($_POST['price_monthly']),
-                'price_yearly' => floatval($_POST['price_yearly']),
-                'price_2years' => floatval($_POST['price_2years']),
-                'price_4years' => floatval($_POST['price_4years']),
-                'storage_gb' => floatval($_POST['storage_gb']),
-                'bandwidth_gb' => floatval($_POST['bandwidth_gb']),
-                'allowed_websites' => intval($_POST['allowed_websites']),
-                'database_limit' => intval($_POST['database_limit']),
-                'ftp_accounts' => intval($_POST['ftp_accounts']),
-                'email_accounts' => intval($_POST['email_accounts']),
-                'ssh_access' => isset($_POST['ssh_access']) ? 1 : 0,
-                'ssl_free' => isset($_POST['ssl_free']) ? 1 : 0,
-                'daily_backups' => isset($_POST['daily_backups']) ? 1 : 0,
-                'dedicated_ip' => isset($_POST['dedicated_ip']) ? 1 : 0,
+                'features' => sanitizeInput($_POST['features']),
+                'price_monthly' => !empty($_POST['price_monthly']) ? floatval($_POST['price_monthly']) : null,
+                'price_yearly' => !empty($_POST['price_yearly']) ? floatval($_POST['price_yearly']) : null,
+                'price_2years' => !empty($_POST['price_2years']) ? floatval($_POST['price_2years']) : null,
+                'price_4years' => !empty($_POST['price_4years']) ? floatval($_POST['price_4years']) : null,
                 'setup_fee' => floatval($_POST['setup_fee']),
                 'gst_percentage' => floatval($_POST['gst_percentage']),
                 'processing_fee' => floatval($_POST['processing_fee']),
@@ -68,20 +59,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'slug' => sanitizeInput($_POST['slug']),
                 'description' => sanitizeInput($_POST['description']),
                 'short_description' => sanitizeInput($_POST['short_description']),
-                'price_monthly' => floatval($_POST['price_monthly']),
-                'price_yearly' => floatval($_POST['price_yearly']),
-                'price_2years' => floatval($_POST['price_2years']),
-                'price_4years' => floatval($_POST['price_4years']),
-                'storage_gb' => floatval($_POST['storage_gb']),
-                'bandwidth_gb' => floatval($_POST['bandwidth_gb']),
-                'allowed_websites' => intval($_POST['allowed_websites']),
-                'database_limit' => intval($_POST['database_limit']),
-                'ftp_accounts' => intval($_POST['ftp_accounts']),
-                'email_accounts' => intval($_POST['email_accounts']),
-                'ssh_access' => isset($_POST['ssh_access']) ? 1 : 0,
-                'ssl_free' => isset($_POST['ssl_free']) ? 1 : 0,
-                'daily_backups' => isset($_POST['daily_backups']) ? 1 : 0,
-                'dedicated_ip' => isset($_POST['dedicated_ip']) ? 1 : 0,
+                'features' => sanitizeInput($_POST['features']),
+                'price_monthly' => !empty($_POST['price_monthly']) ? floatval($_POST['price_monthly']) : null,
+                'price_yearly' => !empty($_POST['price_yearly']) ? floatval($_POST['price_yearly']) : null,
+                'price_2years' => !empty($_POST['price_2years']) ? floatval($_POST['price_2years']) : null,
+                'price_4years' => !empty($_POST['price_4years']) ? floatval($_POST['price_4years']) : null,
                 'setup_fee' => floatval($_POST['setup_fee']),
                 'gst_percentage' => floatval($_POST['gst_percentage']),
                 'processing_fee' => floatval($_POST['processing_fee']),
@@ -210,10 +192,8 @@ include 'includes/header.php';
                 <tr>
                     <th>Name</th>
                     <th>Short Description</th>
-                    <th>Price (Monthly)</th>
-                    <th>Storage</th>
-                    <th>Bandwidth</th>
-                    <th>Features</th>
+                    <th>Pricing Available</th>
+                    <th>Features Preview</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
@@ -234,25 +214,28 @@ include 'includes/header.php';
                                 <div class="user-email"><?php echo htmlspecialchars($package['short_description']); ?></div>
                             </td>
                             <td>
-                                <div class="user-email">₹<?php echo number_format($package['price_monthly'], 2); ?></div>
-                                <small class="text-muted">₹<?php echo number_format($package['price_yearly']/12, 2); ?>/mo yearly</small>
-                            </td>
-                            <td>
-                                <div class="user-email"><?php echo $package['storage_gb']; ?> GB</div>
-                            </td>
-                            <td>
-                                <div class="user-email"><?php echo $package['bandwidth_gb']; ?> GB</div>
-                            </td>
-                            <td>
-                                <div class="d-flex flex-wrap gap-1">
-                                    <span class="badge bg-secondary"><?php echo $package['allowed_websites']; ?> Sites</span>
-                                    <span class="badge bg-secondary"><?php echo $package['database_limit']; ?> DBs</span>
-                                    <?php if ($package['ssh_access']): ?>
-                                        <span class="badge bg-success">SSH</span>
+                                <div class="d-flex flex-column gap-1">
+                                    <?php if (!empty($package['price_monthly'])): ?>
+                                        <span class="badge bg-primary">Monthly: ₹<?php echo number_format($package['price_monthly'], 0); ?></span>
                                     <?php endif; ?>
-                                    <?php if ($package['ssl_free']): ?>
-                                        <span class="badge bg-success">SSL</span>
+                                    <?php if (!empty($package['price_yearly'])): ?>
+                                        <span class="badge bg-info">Yearly: ₹<?php echo number_format($package['price_yearly'], 0); ?></span>
                                     <?php endif; ?>
+                                    <?php if (!empty($package['price_2years'])): ?>
+                                        <span class="badge bg-success">2 Years: ₹<?php echo number_format($package['price_2years'], 0); ?></span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($package['price_4years'])): ?>
+                                        <span class="badge bg-warning">4 Years: ₹<?php echo number_format($package['price_4years'], 0); ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="max-width: 200px; font-size: 12px;">
+                                    <?php 
+                                    $features = isset($package['features']) ? $package['features'] : '';
+                                    echo nl2br(htmlspecialchars(substr($features, 0, 100)));
+                                    if (strlen($features) > 100) echo '...';
+                                    ?>
                                 </div>
                             </td>
                             <td>
@@ -328,85 +311,51 @@ include 'includes/header.php';
                         <textarea class="form-control" id="description" name="description" rows="3"></textarea>
                     </div>
                     
+                    <div class="mb-3">
+                        <label class="form-label">Features *</label>
+                        <textarea class="form-control" id="features" name="features" rows="8" placeholder="Enter each feature on a new line, e.g.:&#10;CloudPanel Pre-installed&#10;Full Root SSH Access&#10;Daily Automated Backups&#10;Free SSL Certificate&#10;DDoS Protection&#10;99.9% Uptime Guarantee&#10;1 vCPU&#10;1GB RAM&#10;25GB SSD Storage&#10;1TB Bandwidth" required></textarea>
+                        <small class="text-muted">Enter each feature on a new line. These will be displayed as bullet points.</small>
+                    </div>
+                    
                     <hr>
-                    <h6 class="mb-3">Pricing (₹)</h6>
+                    <h6 class="mb-3">Pricing (₹) - Leave blank to hide that billing cycle</h6>
                     <div class="row">
                         <div class="col-md-3 mb-3">
-                            <label class="form-label">Monthly</label>
-                            <input type="number" step="0.01" class="form-control" id="price_monthly" name="price_monthly" required>
+                            <label class="form-label">Monthly Price</label>
+                            <input type="number" step="0.01" class="form-control" id="price_monthly" name="price_monthly" placeholder="e.g., 499">
+                            <small class="text-muted">Leave empty to hide</small>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <label class="form-label">Yearly</label>
-                            <input type="number" step="0.01" class="form-control" id="price_yearly" name="price_yearly" required>
+                            <label class="form-label">Yearly Price</label>
+                            <input type="number" step="0.01" class="form-control" id="price_yearly" name="price_yearly" placeholder="e.g., 4999">
+                            <small class="text-muted">Total for 1 year</small>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <label class="form-label">2 Years</label>
-                            <input type="number" step="0.01" class="form-control" id="price_2years" name="price_2years" required>
+                            <label class="form-label">2 Years Price</label>
+                            <input type="number" step="0.01" class="form-control" id="price_2years" name="price_2years" placeholder="e.g., 8999">
+                            <small class="text-muted">Total for 2 years</small>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <label class="form-label">4 Years</label>
-                            <input type="number" step="0.01" class="form-control" id="price_4years" name="price_4years" required>
+                            <label class="form-label">4 Years Price</label>
+                            <input type="number" step="0.01" class="form-control" id="price_4years" name="price_4years" placeholder="e.g., 15999">
+                            <small class="text-muted">Total for 4 years</small>
                         </div>
                     </div>
                     
                     <hr>
-                    <h6 class="mb-3">Resources</h6>
+                    <h6 class="mb-3">Additional Charges</h6>
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Storage (GB)</label>
-                            <input type="number" step="0.01" class="form-control" id="storage_gb" name="storage_gb" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Bandwidth (GB)</label>
-                            <input type="number" step="0.01" class="form-control" id="bandwidth_gb" name="bandwidth_gb" required>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Setup Fee (₹)</label>
+                            <input type="number" step="0.01" class="form-control" id="setup_fee" name="setup_fee" value="0">
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Allowed Websites</label>
-                            <input type="number" class="form-control" id="allowed_websites" name="allowed_websites" required>
+                            <label class="form-label">GST %</label>
+                            <input type="number" step="0.01" class="form-control" id="gst_percentage" name="gst_percentage" value="18">
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Database Limit</label>
-                            <input type="number" class="form-control" id="database_limit" name="database_limit" required>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Email Accounts</label>
-                            <input type="number" class="form-control" id="email_accounts" name="email_accounts" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">FTP Accounts</label>
-                            <input type="number" class="form-control" id="ftp_accounts" name="ftp_accounts" required>
-                        </div>
-                    </div>
-                    
-                    <hr>
-             
-                    
-                    <hr>
-                    <h6 class="mb-3">Features</h6>
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="ssh_access" name="ssh_access">
-                                <label class="form-check-label" for="ssh_access">SSH Access</label>
-                            </div>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="ssl_free" name="ssl_free" checked>
-                                <label class="form-check-label" for="ssl_free">Free SSL</label>
-                            </div>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="daily_backups" name="daily_backups">
-                                <label class="form-check-label" for="daily_backups">Daily Backups</label>
-                            </div>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="dedicated_ip" name="dedicated_ip">
-                                <label class="form-check-label" for="dedicated_ip">Dedicated IP</label>
-                            </div>
+                            <label class="form-label">Processing Fee (₹)</label>
+                            <input type="number" step="0.01" class="form-control" id="processing_fee" name="processing_fee" value="0">
                         </div>
                     </div>
                     
@@ -473,26 +422,17 @@ function editPackage(packageId) {
             document.getElementById('slug').value = p.slug;
             document.getElementById('short_description').value = p.short_description;
             document.getElementById('description').value = p.description || '';
-            document.getElementById('price_monthly').value = p.price_monthly;
-            document.getElementById('price_yearly').value = p.price_yearly;
-            document.getElementById('price_2years').value = p.price_2years;
-            document.getElementById('price_4years').value = p.price_4years;
-            document.getElementById('storage_gb').value = p.storage_gb;
-            document.getElementById('bandwidth_gb').value = p.bandwidth_gb;
-            document.getElementById('allowed_websites').value = p.allowed_websites;
-            document.getElementById('database_limit').value = p.database_limit;
-            document.getElementById('ftp_accounts').value = p.ftp_accounts;
-            document.getElementById('email_accounts').value = p.email_accounts;
-            document.getElementById('ssh_access').checked = p.ssh_access == 1;
-            document.getElementById('ssl_free').checked = p.ssl_free == 1;
-            document.getElementById('daily_backups').checked = p.daily_backups == 1;
-            document.getElementById('dedicated_ip').checked = p.dedicated_ip == 1;
-            document.getElementById('setup_fee').value = p.setup_fee;
-            document.getElementById('gst_percentage').value = p.gst_percentage;
-            document.getElementById('processing_fee').value = p.processing_fee;
+            document.getElementById('features').value = p.features || '';
+            document.getElementById('price_monthly').value = p.price_monthly || '';
+            document.getElementById('price_yearly').value = p.price_yearly || '';
+            document.getElementById('price_2years').value = p.price_2years || '';
+            document.getElementById('price_4years').value = p.price_4years || '';
+            document.getElementById('setup_fee').value = p.setup_fee || 0;
+            document.getElementById('gst_percentage').value = p.gst_percentage || 18;
+            document.getElementById('processing_fee').value = p.processing_fee || 0;
             document.getElementById('status').value = p.status;
             document.getElementById('is_popular').checked = p.is_popular == 1;
-            document.getElementById('sort_order').value = p.sort_order;
+            document.getElementById('sort_order').value = p.sort_order || 0;
             
             const modal = new bootstrap.Modal(document.getElementById('packageModal'));
             modal.show();

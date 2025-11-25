@@ -91,21 +91,17 @@ function getActivePackages($conn, $limit = null) {
  */
 function createPackage($conn, $data) {
     $stmt = $conn->prepare("INSERT INTO hosting_packages (
-        name, slug, description, short_description,
+        name, slug, description, short_description, features,
         price_monthly, price_yearly, price_2years, price_4years,
-        storage_gb, bandwidth_gb, allowed_websites, database_limit,
-        ftp_accounts, email_accounts, ssh_access, ssl_free,
-        daily_backups, dedicated_ip, setup_fee, gst_percentage,
-        processing_fee, status, is_popular, sort_order
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        setup_fee, gst_percentage, processing_fee, 
+        status, is_popular, sort_order
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     
-    $stmt->bind_param("ssssddddddiiiiiidddddssi",
-        $data['name'], $data['slug'], $data['description'], $data['short_description'],
+    $stmt->bind_param("sssssdddddddssi",
+        $data['name'], $data['slug'], $data['description'], $data['short_description'], $data['features'],
         $data['price_monthly'], $data['price_yearly'], $data['price_2years'], $data['price_4years'],
-        $data['storage_gb'], $data['bandwidth_gb'], $data['allowed_websites'], $data['database_limit'],
-        $data['ftp_accounts'], $data['email_accounts'], $data['ssh_access'], $data['ssl_free'],
-        $data['daily_backups'], $data['dedicated_ip'], $data['setup_fee'], $data['gst_percentage'],
-        $data['processing_fee'], $data['status'], $data['is_popular'], $data['sort_order']
+        $data['setup_fee'], $data['gst_percentage'], $data['processing_fee'],
+        $data['status'], $data['is_popular'], $data['sort_order']
     );
     
     $success = $stmt->execute();
@@ -118,21 +114,17 @@ function createPackage($conn, $data) {
  */
 function updatePackage($conn, $packageId, $data) {
     $stmt = $conn->prepare("UPDATE hosting_packages SET 
-        name = ?, slug = ?, description = ?, short_description = ?,
+        name = ?, slug = ?, description = ?, short_description = ?, features = ?,
         price_monthly = ?, price_yearly = ?, price_2years = ?, price_4years = ?,
-        storage_gb = ?, bandwidth_gb = ?, allowed_websites = ?, database_limit = ?,
-        ftp_accounts = ?, email_accounts = ?, ssh_access = ?, ssl_free = ?,
-        daily_backups = ?, dedicated_ip = ?, setup_fee = ?, gst_percentage = ?,
-        processing_fee = ?, status = ?, is_popular = ?, sort_order = ?
+        setup_fee = ?, gst_percentage = ?, processing_fee = ?,
+        status = ?, is_popular = ?, sort_order = ?
         WHERE id = ?");
     
-    $stmt->bind_param("ssssddddddiiiiiidddddssii",
-        $data['name'], $data['slug'], $data['description'], $data['short_description'],
+    $stmt->bind_param("sssssdddddddssii",
+        $data['name'], $data['slug'], $data['description'], $data['short_description'], $data['features'],
         $data['price_monthly'], $data['price_yearly'], $data['price_2years'], $data['price_4years'],
-        $data['storage_gb'], $data['bandwidth_gb'], $data['allowed_websites'], $data['database_limit'],
-        $data['ftp_accounts'], $data['email_accounts'], $data['ssh_access'], $data['ssl_free'],
-        $data['daily_backups'], $data['dedicated_ip'], $data['setup_fee'], $data['gst_percentage'],
-        $data['processing_fee'], $data['status'], $data['is_popular'], $data['sort_order'],
+        $data['setup_fee'], $data['gst_percentage'], $data['processing_fee'],
+        $data['status'], $data['is_popular'], $data['sort_order'],
         $packageId
     );
     

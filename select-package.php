@@ -22,13 +22,47 @@ if (!$package || $package['status'] !== 'active') {
 // Check if user is logged in
 $isLoggedIn = isLoggedIn();
 
-// Get pricing for different cycles
-$prices = [
-    'monthly' => $package['price_monthly'],
-    'yearly' => $package['price_yearly'] / 12,
-    '2years' => $package['price_2years'] / 24,
-    '4years' => $package['price_4years'] / 48
-];
+// Get pricing for different cycles (only if they exist and are greater than 0)
+$availableCycles = [];
+if (!empty($package['price_monthly']) && $package['price_monthly'] > 0) {
+    $availableCycles['monthly'] = [
+        'price' => $package['price_monthly'],
+        'label' => 'Monthly',
+        'total' => $package['price_monthly']
+    ];
+}
+if (!empty($package['price_yearly']) && $package['price_yearly'] > 0) {
+    $availableCycles['yearly'] = [
+        'price' => $package['price_yearly'] / 12,
+        'label' => 'Yearly',
+        'total' => $package['price_yearly']
+    ];
+}
+if (!empty($package['price_2years']) && $package['price_2years'] > 0) {
+    $availableCycles['2years'] = [
+        'price' => $package['price_2years'] / 24,
+        'label' => '2 Years',
+        'total' => $package['price_2years']
+    ];
+}
+if (!empty($package['price_4years']) && $package['price_4years'] > 0) {
+    $availableCycles['4years'] = [
+        'price' => $package['price_4years'] / 48,
+        'label' => '4 Years',
+        'total' => $package['price_4years']
+    ];
+}
+
+// If no cycles available, redirect back
+if (empty($availableCycles)) {
+    setFlashMessage('error', 'No pricing available for this package');
+    redirect('index.php');
+}
+
+// Validate billing cycle
+if (!isset($availableCycles[$billingCycle])) {
+    $billingCycle = array_key_first($availableCycles);
+}
 
 // Calculate pricing
 function getDiscount($originalPrice, $discountedPrice) {
@@ -163,63 +197,22 @@ function getDiscount($originalPrice, $discountedPrice) {
                     <!-- Billing Cycle Selection -->
                     <h5 class="mt-4 mb-3">Select Billing Cycle</h5>
                     <div class="billing-cycle-tabs">
-                        <a href="?package=<?php echo $packageSlug; ?>&cycle=monthly" 
-                           class="billing-tab <?php echo $billingCycle === 'monthly' ? 'active' : ''; ?>">
-                            <div style="font-weight: 600;">Monthly</div>
-                            <small>₹<?php echo number_format($prices['monthly'], 2); ?>/mo</small>
-                            <?php if ($getDiscount = getDiscount($prices['monthly'] * 12, $package['price_yearly']) > 0): ?>
-                            <div class="price-savings">Save <?php echo $getDiscount; ?>%</div>
+                        <?php foreach ($availableCycles as $cycleKey => $cycleData): ?>
+                        <a href="?package=<?php echo $packageSlug; ?>&cycle=<?php echo $cycleKey; ?>" 
+                           class="billing-tab <?php echo $billingCycle === $cycleKey ? 'active' : ''; ?>">
+                            <div style="font-weight: 600;"><?php echo $cycleData['label']; ?></div>
+                            <small>₹<?php echo number_format($cycleData['price'], 2); ?>/mo</small>
+                            <?php if (isset($availableCycles['monthly'])): ?>
+                                <?php $discount = getDiscount($availableCycles['monthly']['price'], $cycleData['price']); ?>
+                                <?php if ($discount > 0): ?>
+                                <div class="price-savings">Save <?php echo $discount; ?>%</div>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </a>
-                        
-                        <a href="?package=<?php echo $packageSlug; ?>&cycle=yearly" 
-                           class="billing-tab <?php echo $billingCycle === 'yearly' ? 'active' : ''; ?>">
-                            <div style="font-weight: 600;">Yearly</div>
-                            <small>₹<?php echo number_format($prices['yearly'], 2); ?>/mo</small>
-                            <?php $discount = getDiscount($prices['monthly'], $prices['yearly']); ?>
-                            <?php if ($discount > 0): ?>
-                            <div class="price-savings">Save <?php echo $discount; ?>%</div>
-                            <?php endif; ?>
-                        </a>
-                        
-                        <a href="?package=<?php echo $packageSlug; ?>&cycle=2years" 
-                           class="billing-tab <?php echo $billingCycle === '2years' ? 'active' : ''; ?>">
-                            <div style="font-weight: 600;">2 Years</div>
-                            <small>₹<?php echo number_format($prices['2years'], 2); ?>/mo</small>
-                            <?php $discount = getDiscount($prices['monthly'], $prices['2years']); ?>
-                            <?php if ($discount > 0): ?>
-                            <div class="price-savings">Save <?php echo $discount; ?>%</div>
-                            <?php endif; ?>
-                        </a>
-                        
-                        <a href="?package=<?php echo $packageSlug; ?>&cycle=4years" 
-                           class="billing-tab <?php echo $billingCycle === '4years' ? 'active' : ''; ?>">
-                            <div style="font-weight: 600;">4 Years</div>
-                            <small>₹<?php echo number_format($prices['4years'], 2); ?>/mo</small>
-                            <?php $discount = getDiscount($prices['monthly'], $prices['4years']); ?>
-                            <?php if ($discount > 0): ?>
-                            <div class="price-savings">Save <?php echo $discount; ?>%</div>
-                            <?php endif; ?>
-                        </a>
+                        <?php endforeach; ?>
                     </div>
                     
-                    <!-- Package Features -->
-                    <h5 class="mt-4 mb-3">What's Included</h5>
-                    <ul class="list-unstyled">
-                        <li><i class="bi bi-check-circle-fill text-success"></i> <?php echo $package['storage_gb']; ?> GB Storage</li>
-                        <li><i class="bi bi-check-circle-fill text-success"></i> <?php echo $package['bandwidth_gb']; ?> GB Bandwidth</li>
-                        <li><i class="bi bi-check-circle-fill text-success"></i> <?php echo $package['allowed_websites'] > 999 ? 'Unlimited' : $package['allowed_websites']; ?> Websites</li>
-                        <li><i class="bi bi-check-circle-fill text-success"></i> <?php echo $package['database_limit'] > 999 ? 'Unlimited' : $package['database_limit']; ?> Databases</li>
-                        <?php if ($package['ssh_access']): ?>
-                        <li><i class="bi bi-check-circle-fill text-success"></i> SSH Access</li>
-                        <?php endif; ?>
-                        <?php if ($package['ssl_free']): ?>
-                        <li><i class="bi bi-check-circle-fill text-success"></i> Free SSL Certificate</li>
-                        <?php endif; ?>
-                        <?php if ($package['daily_backups']): ?>
-                        <li><i class="bi bi-check-circle-fill text-success"></i> Daily Backups</li>
-                        <?php endif; ?>
-                    </ul>
+        
                 </div>
             </div>
             
@@ -235,11 +228,11 @@ function getDiscount($originalPrice, $discountedPrice) {
                     
                     <div class="mb-3">
                         <strong>Billing Cycle:</strong><br>
-                        <span class="text-muted"><?php echo ucfirst(str_replace('years', ' Years', $billingCycle)); ?></span>
+                        <span class="text-muted"><?php echo $availableCycles[$billingCycle]['label']; ?></span>
                     </div>
                     
                     <?php
-                    $cyclePrice = getPackagePrice($package, $billingCycle);
+                    $cyclePrice = $availableCycles[$billingCycle]['total'];
                     $calculations = calculateOrderTotal($cyclePrice, $package['setup_fee'], $package['gst_percentage'], $package['processing_fee']);
                     ?>
                     
@@ -249,10 +242,7 @@ function getDiscount($originalPrice, $discountedPrice) {
                     
                     <?php if ($billingCycle !== 'monthly'): ?>
                     <?php
-                    $monthlyEquivalent = $cyclePrice;
-                    if ($billingCycle === 'yearly') $monthlyEquivalent = $cyclePrice / 12;
-                    if ($billingCycle === '2years') $monthlyEquivalent = $cyclePrice / 24;
-                    if ($billingCycle === '4years') $monthlyEquivalent = $cyclePrice / 48;
+                    $monthlyEquivalent = $availableCycles[$billingCycle]['price'];
                     ?>
                     <p class="text-center text-muted">₹<?php echo number_format($monthlyEquivalent, 2); ?> per month</p>
                     <?php endif; ?>
