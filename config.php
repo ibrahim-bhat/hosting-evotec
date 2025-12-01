@@ -7,9 +7,9 @@ define('DB_PASS', '');
 define('DB_NAME', 'hosting');
 } else {
     define('DB_HOST', 'localhost');
-    define('DB_USER', 'u210720206_hosting');
-    define('DB_PASS', 'Evotec123@hosting');
-    define('DB_NAME', 'u210720206_hosting');
+    define('DB_USER', 'hostingevotec');
+    define('DB_PASS', 'Ibrahimbhat123@');
+    define('DB_NAME', 'hostingevotec');
 }
 
 // Site Configuration
@@ -80,4 +80,5 @@ if ($stmt) {
 }
 define('SESSION_LIFETIME', $sessionTimeoutMinutes * 60); // Convert minutes to seconds
 ?>
+
 
