@@ -122,9 +122,9 @@ $pageTitle = "Billing";
                                         <span class="user-email"><?php echo formatCurrency($renewal['total_amount']); ?></span>
                                     </td>
                                     <td>
-                                        <a href="../select-package.php?renew=<?php echo $renewal['id']; ?>" class="btn btn-primary btn-sm">
+                                        <a href="renew.php?order_id=<?php echo $renewal['id']; ?>" class="btn btn-primary btn-sm">
                                             <i class="bi bi-arrow-clockwise me-1"></i>
-                                            Renew
+                                            Renew / Upgrade
                                         </a>
                                     </td>
                                 </tr>

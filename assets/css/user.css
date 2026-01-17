@@ -774,6 +774,38 @@ body {
     color: #1a1d29;
 }
 
+/* Warning Button */
+.btn-warning {
+    background: #f59e0b;
+    color: #ffffff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-warning:hover {
+    background: #d97706;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    color: #ffffff;
+}
+
+a.btn-warning {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+a.btn-warning:hover {
+    text-decoration: none;
+}
+
+
 /* Form Styles */
 .form-control {
     width: 100%;

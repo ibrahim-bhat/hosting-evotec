@@ -10,10 +10,13 @@ function getUserOrders($conn, $userId, $search = '', $limit = null, $offset = 0)
     if (!empty($search)) {
         $searchTerm = "%{$search}%";
         $stmt = $conn->prepare("
-            SELECT ho.*, hp.name as package_name 
+            SELECT ho.*, hp.name as package_name, hp.slug as package_slug,
+            (SELECT COUNT(*) FROM hosting_orders WHERE renewed_from_order_id = ho.id) as has_been_renewed
             FROM hosting_orders ho 
             LEFT JOIN hosting_packages hp ON ho.package_id = hp.id 
-            WHERE ho.user_id = ? AND (ho.order_number LIKE ? OR hp.name LIKE ?)
+            WHERE ho.user_id = ? 
+            AND (ho.order_number LIKE ? OR hp.name LIKE ?)
+            AND NOT EXISTS (SELECT 1 FROM hosting_orders WHERE renewed_from_order_id = ho.id)
             ORDER BY ho.created_at DESC 
             LIMIT ? OFFSET ?
         ");
@@ -21,20 +24,24 @@ function getUserOrders($conn, $userId, $search = '', $limit = null, $offset = 0)
     } else {
         if ($limit) {
             $stmt = $conn->prepare("
-                SELECT ho.*, hp.name as package_name 
+                SELECT ho.*, hp.name as package_name, hp.slug as package_slug,
+                (SELECT COUNT(*) FROM hosting_orders WHERE renewed_from_order_id = ho.id) as has_been_renewed
                 FROM hosting_orders ho 
                 LEFT JOIN hosting_packages hp ON ho.package_id = hp.id 
                 WHERE ho.user_id = ? 
+                AND NOT EXISTS (SELECT 1 FROM hosting_orders WHERE renewed_from_order_id = ho.id)
                 ORDER BY ho.created_at DESC 
                 LIMIT ? OFFSET ?
             ");
             $stmt->bind_param("iii", $userId, $limit, $offset);
         } else {
             $stmt = $conn->prepare("
-                SELECT ho.*, hp.name as package_name 
+                SELECT ho.*, hp.name as package_name, hp.slug as package_slug,
+                (SELECT COUNT(*) FROM hosting_orders WHERE renewed_from_order_id = ho.id) as has_been_renewed
                 FROM hosting_orders ho 
                 LEFT JOIN hosting_packages hp ON ho.package_id = hp.id 
                 WHERE ho.user_id = ? 
+                AND NOT EXISTS (SELECT 1 FROM hosting_orders WHERE renewed_from_order_id = ho.id)
                 ORDER BY ho.created_at DESC
             ");
             $stmt->bind_param("i", $userId);
@@ -344,26 +351,6 @@ function getDaysUntilExpiry($expiryDate) {
  */
 function isOrderExpiringSoon($expiryDate, $days = 7) {
     return getDaysUntilExpiry($expiryDate) <= $days;
-}
-
-/**
- * Format time ago
- */
-function timeAgo($timestamp) {
-    $time = strtotime($timestamp);
-    $diff = time() - $time;
-    
-    if ($diff < 60) {
-        return $diff . ' seconds ago';
-    } elseif ($diff < 3600) {
-        return floor($diff / 60) . ' minutes ago';
-    } elseif ($diff < 86400) {
-        return floor($diff / 3600) . ' hours ago';
-    } elseif ($diff < 604800) {
-        return floor($diff / 86400) . ' days ago';
-    } else {
-        return date('M d, Y', $time);
-    }
 }
 
 ?>

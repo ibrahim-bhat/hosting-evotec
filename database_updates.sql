@@ -26,3 +26,8 @@ MODIFY COLUMN `price_2years` DECIMAL(10,2) NULL DEFAULT NULL,
 MODIFY COLUMN `price_4years` DECIMAL(10,2) NULL DEFAULT NULL;
 
 -- Sample features for different package types (uncomment and modify as needed
+
+-- Add column to track renewal/upgrade relationships
+ALTER TABLE `hosting_orders` 
+ADD COLUMN `renewed_from_order_id` INT(11) NULL DEFAULT NULL COMMENT 'Previous order ID if this is a renewal/upgrade' AFTER `order_number`,
+ADD INDEX `idx_renewed_from` (`renewed_from_order_id`);

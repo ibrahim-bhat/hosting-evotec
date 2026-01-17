@@ -3,6 +3,7 @@ require_once 'config.php';
 require_once 'components/auth_helper.php';
 require_once 'components/hosting_helper.php';
 require_once 'components/flash_message.php';
+require_once 'components/cleanup_helper.php';
 
 // Check if user is logged in
 if (!isLoggedIn()) {
@@ -53,6 +54,9 @@ if ($status === 'success' && !empty($paymentId)) {
     ];
     
     createPaymentHistory($conn, $paymentData);
+    
+    // Auto-cleanup: Cancel other pending orders for this user
+    cancelUserPendingOrders($conn, $_SESSION['user_id'], $orderId);
     
     setFlashMessage('success', 'Payment successful! Your hosting account has been activated.');
     redirect('user/index.php');

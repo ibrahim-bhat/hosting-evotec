@@ -13,16 +13,45 @@ if (!isLoggedIn()) {
 
 // Get package from URL
 $packageSlug = isset($_GET['package']) ? sanitizeInput($_GET['package']) : '';
+$renewOrderId = isset($_GET['renew']) ? (int)$_GET['renew'] : null;
+
 if (empty($packageSlug)) {
     setFlashMessage('error', 'Invalid package selected');
     redirect('hosting.php');
 }
 
+// Get renewal order details if renewing
+$renewOrder = null;
+if ($renewOrderId) {
+    $renewOrder = getOrderById($conn, $renewOrderId);
+    if (!$renewOrder || $renewOrder['user_id'] != $_SESSION['user_id']) {
+        setFlashMessage('error', 'Renewal order not found or access denied');
+        redirect('hosting.php');
+    }
+}
+
 // Get package details
-$package = getPackageBySlug($conn, $packageSlug);
-if (!$package || $package['status'] !== 'active') {
-    setFlashMessage('error', 'Package not found or inactive');
-    redirect('hosting.php');
+// For renewals, allow deactivated packages
+if ($renewOrder) {
+    // Get package by slug without status check for renewals
+    $stmt = $conn->prepare("SELECT * FROM hosting_packages WHERE slug = ?");
+    $stmt->bind_param("s", $packageSlug);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $package = $result->fetch_assoc();
+    $stmt->close();
+    
+    if (!$package) {
+        setFlashMessage('error', 'Package not found');
+        redirect('user/hosting.php');
+    }
+} else {
+    // For new orders, only allow active packages
+    $package = getPackageBySlug($conn, $packageSlug);
+    if (!$package || $package['status'] !== 'active') {
+        setFlashMessage('error', 'Package not found or inactive');
+        redirect('index.php');
+    }
 }
 
 // Get user details
@@ -50,6 +79,46 @@ $orderId = createOrder($conn, $_SESSION['user_id'], $package['id'], $billingCycl
 if (!$orderId) {
     setFlashMessage('error', 'Failed to create order');
     redirect('hosting.php');
+}
+
+// If this is a renewal, link it to the previous order and recalculate dates
+if ($renewOrderId && $renewOrder) {
+    // Calculate new start and expiry dates for renewal
+    $oldExpiryDate = $renewOrder['expiry_date'];
+    $today = date('Y-m-d');
+    
+    // If old plan has expired, start from today; otherwise extend from old expiry date
+    if (strtotime($oldExpiryDate) < strtotime($today)) {
+        // Plan already expired - start from today
+        $newStartDate = $today;
+    } else {
+        // Plan still active - extend from expiry date
+        $newStartDate = $oldExpiryDate;
+    }
+    
+    // Calculate new expiry date based on billing cycle
+    $newExpiryDate = date('Y-m-d', strtotime($newStartDate . ' +' . 
+        ($billingCycle === 'monthly' ? '1 month' : 
+        ($billingCycle === 'yearly' ? '1 year' : 
+        ($billingCycle === '2years' ? '2 years' : '4 years')))));
+    
+    // Update the new order with correct dates
+    $stmt = $conn->prepare("UPDATE hosting_orders SET 
+        renewed_from_order_id = ?, 
+        start_date = ?, 
+        expiry_date = ?, 
+        renewal_date = ? 
+        WHERE id = ?");
+    $stmt->bind_param("isssi", $renewOrderId, $newStartDate, $newExpiryDate, $newExpiryDate, $orderId);
+    $stmt->execute();
+    $stmt->close();
+    
+    // Also add to renewal history with correct dates
+    $stmt = $conn->prepare("INSERT INTO renewal_history (order_id, user_id, previous_order_id, renewal_amount, billing_cycle, renewal_date, expiry_date) 
+                           VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("iiidsss", $orderId, $_SESSION['user_id'], $renewOrderId, $calculations['total_amount'], $billingCycle, $newStartDate, $newExpiryDate);
+    $stmt->execute();
+    $stmt->close();
 }
 
 // Update order with calculated amounts

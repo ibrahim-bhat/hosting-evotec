@@ -4,6 +4,38 @@ require_once '../components/user_helper.php';
 
 $userId = $_SESSION['user_id'];
 
+// Auto-fix: Add column if it doesn't exist
+$result = mysqli_query($conn, "SHOW COLUMNS FROM hosting_orders LIKE 'renewed_from_order_id'");
+if (mysqli_num_rows($result) == 0) {
+    // Add the column silently
+    mysqli_query($conn, "ALTER TABLE hosting_orders ADD COLUMN renewed_from_order_id INT(11) NULL DEFAULT NULL COMMENT 'Previous order ID if this is a renewal/upgrade' AFTER order_number");
+    mysqli_query($conn, "ALTER TABLE hosting_orders ADD INDEX idx_renewed_from (renewed_from_order_id)");
+}
+
+// Auto-detect and link renewals/upgrades - works for same package OR upgrades
+// Link newer orders to older expired orders from the same user
+$autoLinkQuery = "
+    UPDATE hosting_orders o1
+    INNER JOIN (
+        SELECT o2.id, MAX(o3.id) as old_order_id
+        FROM hosting_orders o2
+        LEFT JOIN hosting_orders o3 ON 
+            o2.user_id = o3.user_id 
+            AND o2.created_at > o3.created_at
+            AND o3.payment_status = 'paid'
+            AND o3.expiry_date < o2.created_at
+            AND NOT EXISTS (SELECT 1 FROM hosting_orders WHERE renewed_from_order_id = o3.id)
+        WHERE o2.user_id = ?
+            AND o2.renewed_from_order_id IS NULL
+            AND o3.id IS NOT NULL
+        GROUP BY o2.id
+    ) latest ON o1.id = latest.id
+    SET o1.renewed_from_order_id = latest.old_order_id";
+$stmt = $conn->prepare($autoLinkQuery);
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$stmt->close();
+
 // Get user's hosting orders
 $orders = getUserOrders($conn, $userId);
 
@@ -52,7 +84,9 @@ $pageTitle = "My Hosting";
                             <li>
                                 <i class="bi bi-clock"></i>
                                 <strong>Expires:</strong> <?php echo formatDate($order['expiry_date']); ?>
-                                <?php if (isOrderExpiringSoon($order['expiry_date'])): ?>
+                                <?php if (strtotime($order['expiry_date']) < time()): ?>
+                                    <span class="text-danger fw-bold">(Expired)</span>
+                                <?php elseif (isOrderExpiringSoon($order['expiry_date'])): ?>
                                     <span class="text-danger">(<?php echo getDaysUntilExpiry($order['expiry_date']); ?> days left)</span>
                                 <?php endif; ?>
                             </li>
@@ -70,6 +104,16 @@ $pageTitle = "My Hosting";
                             <a href="../payment-handler.php?order_id=<?php echo $order['id']; ?>" class="btn btn-primary flex-fill">
                                 <i class="bi bi-credit-card me-1"></i>
                                 Pay Now
+                            </a>
+                        <?php elseif ($order['expiry_date'] && strtotime($order['expiry_date']) < time()): ?>
+                            <a href="renew.php?order_id=<?php echo $order['id']; ?>" class="btn btn-warning flex-fill">
+                                <i class="bi bi-arrow-repeat me-1"></i>
+                                Renew / Upgrade
+                            </a>
+                        <?php elseif (isOrderExpiringSoon($order['expiry_date'])): ?>
+                            <a href="renew.php?order_id=<?php echo $order['id']; ?>" class="btn btn-warning flex-fill">
+                                <i class="bi bi-arrow-repeat me-1"></i>
+                                Renew / Upgrade
                             </a>
                         <?php else: ?>
                             <button class="btn btn-secondary flex-fill" disabled>
@@ -135,12 +179,7 @@ $pageTitle = "My Hosting";
                             <div class="stats-label">Active Websites</div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-3">
-                        <div class="text-center">
-                            <div class="stats-value" style="font-size: 24px;"><?php echo formatCurrency($stats['total_spent']); ?></div>
-                            <div class="stats-label">Total Spent</div>
-                        </div>
-                    </div>
+
                 </div>
             </div>
         </div>

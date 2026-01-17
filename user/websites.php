@@ -107,31 +107,68 @@ $pageTitle = "My Websites";
                             <h6 class="fw-bold mb-2">Access Information</h6>
                             
                             <?php if ($website['cpanel_url'] && $website['cpanel_username']): ?>
-                                <div class="mb-2">
-                                    <small class="text-muted">Control Panel:</small>
-                                    <div class="d-flex align-items-center">
+                                <div class="mb-3">
+                                    <small class="text-muted d-block mb-1"><strong>cPanel:</strong></small>
+                                    <div class="mb-1">
                                         <a href="<?php echo htmlspecialchars($website['cpanel_url']); ?>" 
                                            target="_blank" 
-                                           class="btn btn-sm btn-outline-primary me-2">
-                                            <i class="bi bi-gear me-1"></i>
-                                            cPanel
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-box-arrow-up-right me-1"></i>
+                                            Open cPanel
                                         </a>
-                                        <small class="text-muted">
-                                            User: <?php echo htmlspecialchars($website['cpanel_username']); ?>
-                                        </small>
                                     </div>
+                                    <div class="mb-1">
+                                        <small class="text-muted">Username:</small>
+                                        <code class="bg-light px-2 py-1 rounded ms-1" 
+                                              onclick="navigator.clipboard.writeText('<?php echo htmlspecialchars($website['cpanel_username']); ?>')" 
+                                              style="cursor: pointer; font-size: 11px;" 
+                                              title="Click to copy">
+                                            <?php echo htmlspecialchars($website['cpanel_username']); ?>
+                                        </code>
+                                    </div>
+                                    <?php if ($website['cpanel_password']): ?>
+                                        <div class="mb-1">
+                                            <small class="text-muted">Password:</small>
+                                            <code class="bg-light px-2 py-1 rounded ms-1" 
+                                                  onclick="navigator.clipboard.writeText('<?php echo htmlspecialchars($website['cpanel_password']); ?>')" 
+                                                  style="cursor: pointer; font-size: 11px;" 
+                                                  title="Click to copy">
+                                                <?php echo htmlspecialchars($website['cpanel_password']); ?>
+                                            </code>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             <?php endif; ?>
                             
                             <?php if ($website['ssh_host'] && $website['ssh_username']): ?>
-                                <div class="mb-2">
-                                    <small class="text-muted">SSH Access:</small>
-                                    <div class="d-flex align-items-center">
-                                        <code class="bg-light px-2 py-1 rounded me-2">
-                                            <?php echo htmlspecialchars($website['ssh_username']); ?>@<?php echo htmlspecialchars($website['ssh_host']); ?>
+                                <div class="mb-3">
+                                    <small class="text-muted d-block mb-1"><strong>SSH Access:</strong></small>
+                                    <div class="mb-1">
+                                        <small class="text-muted">Host:</small>
+                                        <code class="bg-light px-2 py-1 rounded ms-1" style="font-size: 11px;">
+                                            <?php echo htmlspecialchars($website['ssh_host']); ?>:<?php echo $website['ssh_port'] ?? 22; ?>
                                         </code>
-                                        <small class="text-muted">Port: <?php echo $website['ssh_port'] ?? 22; ?></small>
                                     </div>
+                                    <div class="mb-1">
+                                        <small class="text-muted">Username:</small>
+                                        <code class="bg-light px-2 py-1 rounded ms-1" 
+                                              onclick="navigator.clipboard.writeText('<?php echo htmlspecialchars($website['ssh_username']); ?>')" 
+                                              style="cursor: pointer; font-size: 11px;" 
+                                              title="Click to copy">
+                                            <?php echo htmlspecialchars($website['ssh_username']); ?>
+                                        </code>
+                                    </div>
+                                    <?php if ($website['ssh_password']): ?>
+                                        <div class="mb-1">
+                                            <small class="text-muted">Password:</small>
+                                            <code class="bg-light px-2 py-1 rounded ms-1" 
+                                                  onclick="navigator.clipboard.writeText('<?php echo htmlspecialchars($website['ssh_password']); ?>')" 
+                                                  style="cursor: pointer; font-size: 11px;" 
+                                                  title="Click to copy">
+                                                <?php echo htmlspecialchars($website['ssh_password']); ?>
+                                            </code>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             <?php endif; ?>
                             
@@ -280,6 +317,20 @@ $pageTitle = "My Websites";
                                         <label class="form-label">cPanel Username</label>
                                         <div class="form-control-plaintext"><?php echo htmlspecialchars($websiteDetails['cpanel_username']); ?></div>
                                     </div>
+                                    <?php if ($websiteDetails['cpanel_password']): ?>
+                                        <div class="col-md-6">
+                                            <label class="form-label">cPanel Password</label>
+                                            <div class="form-control-plaintext">
+                                                <code class="bg-light px-2 py-1 rounded" 
+                                                      onclick="navigator.clipboard.writeText('<?php echo htmlspecialchars($websiteDetails['cpanel_password']); ?>')" 
+                                                      style="cursor: pointer;" 
+                                                      title="Click to copy">
+                                                    <?php echo htmlspecialchars($websiteDetails['cpanel_password']); ?>
+                                                </code>
+                                                <small class="text-muted ms-2">Click to copy</small>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                                 
                                 <?php if ($websiteDetails['ssh_host']): ?>
@@ -295,6 +346,20 @@ $pageTitle = "My Websites";
                                         <label class="form-label">SSH Port</label>
                                         <div class="form-control-plaintext"><?php echo $websiteDetails['ssh_port'] ?? 22; ?></div>
                                     </div>
+                                    <?php if ($websiteDetails['ssh_password']): ?>
+                                        <div class="col-md-6">
+                                            <label class="form-label">SSH Password</label>
+                                            <div class="form-control-plaintext">
+                                                <code class="bg-light px-2 py-1 rounded" 
+                                                      onclick="navigator.clipboard.writeText('<?php echo htmlspecialchars($websiteDetails['ssh_password']); ?>')" 
+                                                      style="cursor: pointer;" 
+                                                      title="Click to copy">
+                                                    <?php echo htmlspecialchars($websiteDetails['ssh_password']); ?>
+                                                </code>
+                                                <small class="text-muted ms-2">Click to copy</small>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                                 
                                 <?php if ($websiteDetails['db_name']): ?>
@@ -310,6 +375,69 @@ $pageTitle = "My Websites";
                                         <label class="form-label">Database Host</label>
                                         <div class="form-control-plaintext"><?php echo htmlspecialchars($websiteDetails['db_host']); ?></div>
                                     </div>
+                                    <?php if ($websiteDetails['db_password']): ?>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Database Password</label>
+                                            <div class="form-control-plaintext">
+                                                <code class="bg-light px-2 py-1 rounded" 
+                                                      onclick="navigator.clipboard.writeText('<?php echo htmlspecialchars($websiteDetails['db_password']); ?>')" 
+                                                      style="cursor: pointer;" 
+                                                      title="Click to copy">
+                                                    <?php echo htmlspecialchars($websiteDetails['db_password']); ?>
+                                                </code>
+                                                <small class="text-muted ms-2">Click to copy</small>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                                
+                                <!-- Server Information -->
+                                <?php if ($websiteDetails['server_ip'] || $websiteDetails['nameservers']): ?>
+                                    <div class="col-12">
+                                        <h6 class="fw-bold mb-3 mt-3">Server Information</h6>
+                                    </div>
+                                    
+                                    <?php if ($websiteDetails['server_ip']): ?>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Server IP</label>
+                                            <div class="form-control-plaintext">
+                                                <code class="bg-light px-2 py-1 rounded" 
+                                                      onclick="navigator.clipboard.writeText('<?php echo htmlspecialchars($websiteDetails['server_ip']); ?>')" 
+                                                      style="cursor: pointer;" 
+                                                      title="Click to copy">
+                                                    <?php echo htmlspecialchars($websiteDetails['server_ip']); ?>
+                                                </code>
+                                                <small class="text-muted ms-2">Click to copy</small>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <?php if ($websiteDetails['nameservers']): ?>
+                                        <div class="col-md-12">
+                                            <label class="form-label">Nameservers</label>
+                                            <div class="form-control-plaintext">
+                                                <?php 
+                                                $nameservers = explode(',', $websiteDetails['nameservers']);
+                                                foreach ($nameservers as $ns): 
+                                                    $ns = trim($ns);
+                                                    if (!empty($ns)):
+                                                ?>
+                                                    <div class="mb-2">
+                                                        <code class="bg-light px-2 py-1 rounded" 
+                                                              onclick="navigator.clipboard.writeText('<?php echo htmlspecialchars($ns); ?>')" 
+                                                              style="cursor: pointer;" 
+                                                              title="Click to copy">
+                                                            <?php echo htmlspecialchars($ns); ?>
+                                                        </code>
+                                                        <small class="text-muted ms-2">Click to copy</small>
+                                                    </div>
+                                                <?php 
+                                                    endif;
+                                                endforeach; 
+                                                ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             <?php endif; ?>
                             

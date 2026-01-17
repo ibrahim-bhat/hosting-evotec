@@ -6,6 +6,17 @@ require_once 'components/hosting_helper.php';
 // Get package from URL
 $packageSlug = isset($_GET['package']) ? sanitizeInput($_GET['package']) : '';
 $billingCycle = isset($_GET['cycle']) ? sanitizeInput($_GET['cycle']) : 'monthly';
+$renewOrderId = isset($_GET['renew']) ? (int)$_GET['renew'] : null;
+
+// Get renewal order details if renewing
+$renewOrder = null;
+if ($renewOrderId) {
+    $renewOrder = getOrderById($conn, $renewOrderId);
+    if (!$renewOrder) {
+        setFlashMessage('error', 'Renewal order not found');
+        redirect('hosting.php');
+    }
+}
 
 if (empty($packageSlug)) {
     setFlashMessage('error', 'Invalid package selected');
@@ -13,10 +24,27 @@ if (empty($packageSlug)) {
 }
 
 // Get package details
-$package = getPackageBySlug($conn, $packageSlug);
-if (!$package || $package['status'] !== 'active') {
-    setFlashMessage('error', 'Package not found');
-    redirect('hosting.php');
+// For renewals, we need to get the package even if it's deactivated
+if ($renewOrder) {
+    // Get package by slug without status check for renewals
+    $stmt = $conn->prepare("SELECT * FROM hosting_packages WHERE slug = ?");
+    $stmt->bind_param("s", $packageSlug);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $package = $result->fetch_assoc();
+    $stmt->close();
+    
+    if (!$package) {
+        setFlashMessage('error', 'Package not found');
+        redirect('index.php');
+    }
+} else {
+    // For new orders, only get active packages
+    $package = getPackageBySlug($conn, $packageSlug);
+    if (!$package || $package['status'] !== 'active') {
+        setFlashMessage('error', 'Package not found or not available');
+        redirect('index.php');
+    }
 }
 
 // Check if user is logged in
@@ -191,6 +219,25 @@ function getDiscount($originalPrice, $discountedPrice) {
         <div class="row">
             <div class="col-md-8">
                 <div class="package-card">
+                    <?php if ($renewOrderId && $renewOrder): ?>
+                        <div class="alert alert-info">
+                            <i class="bi bi-arrow-repeat me-2"></i>
+                            <strong><?php echo $renewOrder['package_id'] == $package['id'] ? 'Renewal' : 'Upgrade'; ?>:</strong> 
+                            You are <?php echo $renewOrder['package_id'] == $package['id'] ? 'renewing' : 'upgrading from'; ?> 
+                            <?php if ($renewOrder['package_id'] != $package['id']): ?>
+                                <strong><?php echo htmlspecialchars($renewOrder['package_name']); ?></strong> to 
+                            <?php endif; ?>
+                            your hosting plan.
+                            <small class="d-block mt-1">Previous Order: #<?php echo htmlspecialchars($renewOrder['order_number']); ?></small>
+                        </div>
+                        <?php if ($package['status'] !== 'active'): ?>
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                <strong>Note:</strong> This package is no longer available for new customers, but you can still renew your existing plan.
+                            </div>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                    
                     <h1><?php echo htmlspecialchars($package['name']); ?></h1>
                     <p class="text-muted"><?php echo htmlspecialchars($package['description']); ?></p>
                     
@@ -198,7 +245,7 @@ function getDiscount($originalPrice, $discountedPrice) {
                     <h5 class="mt-4 mb-3">Select Billing Cycle</h5>
                     <div class="billing-cycle-tabs">
                         <?php foreach ($availableCycles as $cycleKey => $cycleData): ?>
-                        <a href="?package=<?php echo $packageSlug; ?>&cycle=<?php echo $cycleKey; ?>" 
+                        <a href="?package=<?php echo $packageSlug; ?>&cycle=<?php echo $cycleKey; ?><?php echo $renewOrderId ? '&renew=' . $renewOrderId : ''; ?>" 
                            class="billing-tab <?php echo $billingCycle === $cycleKey ? 'active' : ''; ?>">
                             <div style="font-weight: 600;"><?php echo $cycleData['label']; ?></div>
                             <small>₹<?php echo number_format($cycleData['price'], 2); ?>/mo</small>
