@@ -13,7 +13,7 @@ define('DB_NAME', 'hosting');
 }
 
 // Site Configuration
-define('SITE_URL', 'http://localhost/hosting');
+define('SITE_URL', 'http://localhost/hosting-evotec');
 define('SITE_NAME', 'SecureAuth');
 
 // Razorpay Configuration - Load from database
