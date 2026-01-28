@@ -78,7 +78,7 @@ $pageTitle = $companyName . " - Next-Generation Cloud Infrastructure";
                <a href="#features" class="nav-link">Features</a>
                <a href="#pricing" class="nav-link">Pricing</a>
                <a href="#network" class="nav-link">Network</a>
-               <a href="features.php" class="nav-link">Compute Options</a>
+               <!-- <a href="features.php" class="nav-link">Compute Options</a> -->
                <?php if ($isLoggedIn): ?>
                   <a href="<?php echo $isAdmin ? 'admin/index.php' : 'user/index.php'; ?>" class="nav-link">
                      <i class="fas fa-user"></i> Dashboard
@@ -113,9 +113,9 @@ $pageTitle = $companyName . " - Next-Generation Cloud Infrastructure";
                </p>
                <div class="hero-buttons">
                   <a href="#pricing" class="btn-large btn-primary">Start Deploying</a>
-                  <a href="#" class="btn-large btn-outline">
+                  <!-- <a href="#" class="btn-large btn-outline">
                      <i class="fas fa-play-circle"></i> Watch Demo
-                  </a>
+                  </a> -->
                </div>
             </div>
             <div class="hero-image">
