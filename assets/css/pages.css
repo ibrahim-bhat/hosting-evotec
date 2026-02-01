@@ -1,0 +1,216 @@
+/* ================================
+   Pages CSS (Policy & Content Pages)
+   ================================ */
+
+.page-hero {
+    padding: 80px 0 60px;
+    background: linear-gradient(180deg, var(--darker-bg) 0%, var(--dark-bg) 100%);
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.page-title {
+    font-size: 48px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.page-subtitle {
+    font-size: 16px;
+    color: var(--text-secondary);
+}
+
+.content-section {
+    padding: 80px 0;
+    background-color: var(--dark-bg);
+}
+
+.content-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 60px;
+}
+
+.content-main {
+    max-width: 800px;
+}
+
+.content-block {
+    margin-bottom: 48px;
+}
+
+.content-block h2 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: var(--text-primary);
+}
+
+.content-block h3 {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 24px 0 16px 0;
+    color: var(--text-primary);
+}
+
+.content-block p {
+    font-size: 16px;
+    line-height: 1.8;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.content-block ul,
+.content-block ol {
+    margin: 16px 0 16px 24px;
+    color: var(--text-secondary);
+}
+
+.content-block li {
+    margin-bottom: 12px;
+    line-height: 1.7;
+    font-size: 16px;
+}
+
+.content-block a {
+    color: var(--primary-blue);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.content-block a:hover {
+    color: var(--text-primary);
+    text-decoration: underline;
+}
+
+.content-block strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Sidebar */
+.content-sidebar {
+    position: sticky;
+    top: 100px;
+    height: fit-content;
+}
+
+.sidebar-nav {
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.sidebar-nav h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+}
+
+.sidebar-nav ul {
+    list-style: none;
+}
+
+.sidebar-nav ul li {
+    margin-bottom: 8px;
+}
+
+.sidebar-nav ul li a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 14px;
+    transition: color 0.3s ease;
+    display: block;
+    padding: 6px 0;
+}
+
+.sidebar-nav ul li a:hover {
+    color: var(--primary-blue);
+}
+
+.sidebar-cta {
+    background: rgba(30, 144, 255, 0.1);
+    border: 2px solid var(--primary-blue);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+}
+
+.sidebar-cta i {
+    font-size: 48px;
+    color: var(--primary-blue);
+    margin-bottom: 16px;
+}
+
+.sidebar-cta h4 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.sidebar-cta p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+/* Highlight Boxes */
+.info-box {
+    background: rgba(30, 144, 255, 0.1);
+    border-left: 4px solid var(--primary-blue);
+    padding: 20px;
+    margin: 24px 0;
+    border-radius: 8px;
+}
+
+.warning-box {
+    background: rgba(245, 158, 11, 0.1);
+    border-left: 4px solid var(--warning-yellow);
+    padding: 20px;
+    margin: 24px 0;
+    border-radius: 8px;
+}
+
+.success-box {
+    background: rgba(16, 185, 129, 0.1);
+    border-left: 4px solid var(--success-green);
+    padding: 20px;
+    margin: 24px 0;
+    border-radius: 8px;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .content-wrapper {
+        grid-template-columns: 1fr;
+    }
+    
+    .content-sidebar {
+        position: relative;
+        top: 0;
+    }
+    
+    .sidebar-nav,
+    .sidebar-cta {
+        margin-bottom: 20px;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-title {
+        font-size: 36px;
+    }
+    
+    .content-block h2 {
+        font-size: 28px;
+    }
+    
+    .content-block h3 {
+        font-size: 20px;
+    }
+}
