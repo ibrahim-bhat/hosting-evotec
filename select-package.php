@@ -1,11 +1,12 @@
 <?php
+session_start();
 require_once 'config.php';
 require_once 'components/auth_helper.php';
 require_once 'components/hosting_helper.php';
 
 // Get package from URL
 $packageSlug = isset($_GET['package']) ? sanitizeInput($_GET['package']) : '';
-$billingCycle = isset($_GET['cycle']) ? sanitizeInput($_GET['cycle']) : 'monthly';
+$billingCycle = isset($_GET['cycle']) ? sanitizeInput($_GET['cycle']) : 'yearly';
 $renewOrderId = isset($_GET['renew']) ? (int)$_GET['renew'] : null;
 
 // Get renewal order details if renewing
@@ -20,13 +21,11 @@ if ($renewOrderId) {
 
 if (empty($packageSlug)) {
     setFlashMessage('error', 'Invalid package selected');
-    redirect('hosting.php');
+    redirect('index.php#pricing');
 }
 
 // Get package details
-// For renewals, we need to get the package even if it's deactivated
 if ($renewOrder) {
-    // Get package by slug without status check for renewals
     $stmt = $conn->prepare("SELECT * FROM hosting_packages WHERE slug = ?");
     $stmt->bind_param("s", $packageSlug);
     $stmt->execute();
@@ -39,7 +38,6 @@ if ($renewOrder) {
         redirect('index.php');
     }
 } else {
-    // For new orders, only get active packages
     $package = getPackageBySlug($conn, $packageSlug);
     if (!$package || $package['status'] !== 'active') {
         setFlashMessage('error', 'Package not found or not available');
@@ -50,15 +48,8 @@ if ($renewOrder) {
 // Check if user is logged in
 $isLoggedIn = isLoggedIn();
 
-// Get pricing for different cycles (only if they exist and are greater than 0)
+// Get pricing for different cycles
 $availableCycles = [];
-if (!empty($package['price_monthly']) && $package['price_monthly'] > 0) {
-    $availableCycles['monthly'] = [
-        'price' => $package['price_monthly'],
-        'label' => 'Monthly',
-        'total' => $package['price_monthly']
-    ];
-}
 if (!empty($package['price_yearly']) && $package['price_yearly'] > 0) {
     $availableCycles['yearly'] = [
         'price' => $package['price_yearly'] / 12,
@@ -93,229 +84,354 @@ if (!isset($availableCycles[$billingCycle])) {
 }
 
 // Calculate pricing
-function getDiscount($originalPrice, $discountedPrice) {
-    if ($originalPrice == 0) return 0;
-    return round((($originalPrice - $discountedPrice) / $originalPrice) * 100);
-}
-
+$cyclePrice = $availableCycles[$billingCycle]['total'];
+$calculations = calculateOrderTotal($cyclePrice, $package['setup_fee'], $package['gst_percentage'], $package['processing_fee']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Select Package - <?php echo htmlspecialchars($package['name']); ?></title>
+    <title><?php echo htmlspecialchars($package['name']); ?> - InfraLabs Cloud</title>
     
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☁️</text></svg>">
+    
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-blue: #5B5FED;
+            --primary-blue-hover: #4A4ED6;
+            --dark-bg: #0F1117;
+            --card-bg: #FFFFFF;
+            --border-color: #E5E7EB;
+            --text-primary: #1F2937;
+            --text-secondary: #6B7280;
+            --success-green: #10B981;
+            --light-bg: #F9FAFB;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background: #f5f7fa;
-            padding: 40px 0;
+            background: var(--light-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 40px 20px;
         }
-        
-        .package-select-container {
-            max-width: 1000px;
+
+        .package-container {
+            max-width: 800px;
             margin: 0 auto;
         }
-        
-        .billing-cycle-tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-        }
-        
-        .billing-tab {
-            flex: 1;
-            min-width: 150px;
-            padding: 15px;
-            background: white;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
             text-decoration: none;
-            color: #333;
+            margin-bottom: 32px;
+            font-size: 14px;
+            transition: color 0.3s ease;
         }
-        
-        .billing-tab:hover {
-            border-color: #4f46e5;
-            transform: translateY(-2px);
+
+        .back-link:hover {
+            color: var(--text-primary);
         }
-        
-        .billing-tab.active {
-            border-color: #4f46e5;
-            background: #4f46e5;
+
+        .package-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 32px;
+        }
+
+        .package-details {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 40px;
+        }
+
+        .package-header h1 {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .package-description {
+            color: var(--text-secondary);
+            font-size: 15px;
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .cycle-options {
+            display: grid;
+            gap: 12px;
+        }
+
+        .cycle-option {
+            background: var(--light-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cycle-option:hover {
+            border-color: var(--primary-blue);
+            background: #F5F6FF;
+        }
+
+        .cycle-option.active {
+            background: var(--primary-blue);
+            border-color: var(--primary-blue);
             color: white;
         }
-        
-        .package-card {
-            background: white;
-            border-radius: 12px;
-            padding: 40px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+
+        .cycle-left {
+            display: flex;
+            flex-direction: column;
         }
-        
-        .price-display {
-            font-size: 48px;
+
+        .cycle-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .cycle-price {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .cycle-option.active .cycle-price {
+            opacity: 1;
+        }
+
+        .order-summary {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 32px;
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .summary-header {
+            margin-bottom: 24px;
+        }
+
+        .summary-header h2 {
+            font-size: 18px;
             font-weight: 700;
-            color: #4f46e5;
+            margin-bottom: 8px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .summary-label {
+            color: var(--text-secondary);
+        }
+
+        .summary-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .summary-divider {
+            height: 1px;
+            background: var(--border-color);
             margin: 20px 0;
         }
-        
-        .price-savings {
-            background: #10b981;
-            color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-            display: inline-block;
-            margin-bottom: 10px;
-        }
-        
-        .btn-checkout {
-            width: 100%;
-            padding: 15px;
-            background: #4f46e5;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 16px;
-            margin-top: 30px;
-        }
-        
-        .btn-checkout:hover {
-            background: #6366f1;
-        }
-        
-        .btn-login {
-            width: 100%;
-            padding: 15px;
-            background: #333;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 16px;
-            margin-top: 30px;
-            text-decoration: none;
-            display: inline-block;
+
+        .price-display {
             text-align: center;
+            margin: 24px 0;
+        }
+
+        .price-amount {
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--primary-blue);
+            line-height: 1;
+        }
+
+        .price-period {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        .billing-notice {
+            background: #FEF3C7;
+            border: 1px solid #FCD34D;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 16px 0;
+            font-size: 13px;
+            color: #92400E;
+        }
+
+        .btn-continue {
+            width: 100%;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-continue:hover {
+            background: var(--primary-blue-hover);
+            transform: translateY(-2px);
+            color: white;
+        }
+
+        .signup-text {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .signup-text a {
+            color: var(--primary-blue);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .package-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .order-summary {
+                position: static;
+            }
+
+            .package-header h1 {
+                font-size: 24px;
+            }
+
+            .price-amount {
+                font-size: 36px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container package-select-container">
-        <div class="row">
-            <div class="col-md-8">
-                <div class="package-card">
-                    <?php if ($renewOrderId && $renewOrder): ?>
-                        <div class="alert alert-info">
-                            <i class="bi bi-arrow-repeat me-2"></i>
-                            <strong><?php echo $renewOrder['package_id'] == $package['id'] ? 'Renewal' : 'Upgrade'; ?>:</strong> 
-                            You are <?php echo $renewOrder['package_id'] == $package['id'] ? 'renewing' : 'upgrading from'; ?> 
-                            <?php if ($renewOrder['package_id'] != $package['id']): ?>
-                                <strong><?php echo htmlspecialchars($renewOrder['package_name']); ?></strong> to 
-                            <?php endif; ?>
-                            your hosting plan.
-                            <small class="d-block mt-1">Previous Order: #<?php echo htmlspecialchars($renewOrder['order_number']); ?></small>
-                        </div>
-                        <?php if ($package['status'] !== 'active'): ?>
-                            <div class="alert alert-warning">
-                                <i class="bi bi-exclamation-triangle me-2"></i>
-                                <strong>Note:</strong> This package is no longer available for new customers, but you can still renew your existing plan.
-                            </div>
-                        <?php endif; ?>
-                    <?php endif; ?>
-                    
+    <div class="package-container">
+        <a href="index.php#pricing" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Pricing
+        </a>
+
+        <div class="package-grid">
+            <!-- Package Details -->
+            <div class="package-details">
+                <div class="package-header">
                     <h1><?php echo htmlspecialchars($package['name']); ?></h1>
-                    <p class="text-muted"><?php echo htmlspecialchars($package['description']); ?></p>
-                    
-                    <!-- Billing Cycle Selection -->
-                    <h5 class="mt-4 mb-3">Select Billing Cycle</h5>
-                    <div class="billing-cycle-tabs">
-                        <?php foreach ($availableCycles as $cycleKey => $cycleData): ?>
-                        <a href="?package=<?php echo $packageSlug; ?>&cycle=<?php echo $cycleKey; ?><?php echo $renewOrderId ? '&renew=' . $renewOrderId : ''; ?>" 
-                           class="billing-tab <?php echo $billingCycle === $cycleKey ? 'active' : ''; ?>">
-                            <div style="font-weight: 600;"><?php echo $cycleData['label']; ?></div>
-                            <small>₹<?php echo number_format($cycleData['price'], 2); ?>/mo</small>
-                            <?php if (isset($availableCycles['monthly'])): ?>
-                                <?php $discount = getDiscount($availableCycles['monthly']['price'], $cycleData['price']); ?>
-                                <?php if ($discount > 0): ?>
-                                <div class="price-savings">Save <?php echo $discount; ?>%</div>
-                                <?php endif; ?>
-                            <?php endif; ?>
-                        </a>
-                        <?php endforeach; ?>
-                    </div>
-                    
-        
+                    <p class="package-description"><?php echo htmlspecialchars($package['short_description'] ?? $package['description']); ?></p>
+                </div>
+
+                <div class="section-title">Select Billing Cycle</div>
+                <div class="cycle-options">
+                    <?php foreach ($availableCycles as $cycleKey => $cycleData): ?>
+                    <a href="?package=<?php echo urlencode($packageSlug); ?>&cycle=<?php echo $cycleKey; ?><?php echo $renewOrderId ? '&renew=' . $renewOrderId : ''; ?>" 
+                       class="cycle-option <?php echo $billingCycle === $cycleKey ? 'active' : ''; ?>">
+                        <div class="cycle-left">
+                            <div class="cycle-name"><?php echo $cycleData['label']; ?></div>
+                            <div class="cycle-price">₹<?php echo number_format($cycleData['price'], 2); ?>/mo</div>
+                        </div>
+                        <div class="cycle-right">
+                            <div style="font-weight: 700; font-size: 18px;">₹<?php echo number_format($cycleData['total'], 2); ?></div>
+                        </div>
+                    </a>
+                    <?php endforeach; ?>
                 </div>
             </div>
-            
+
             <!-- Order Summary -->
-            <div class="col-md-4">
-                <div class="package-card">
-                    <h5 class="mb-4">Order Summary</h5>
-                    
-                    <div class="mb-3">
-                        <strong>Package:</strong><br>
-                        <span class="text-muted"><?php echo htmlspecialchars($package['name']); ?></span>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <strong>Billing Cycle:</strong><br>
-                        <span class="text-muted"><?php echo $availableCycles[$billingCycle]['label']; ?></span>
-                    </div>
-                    
-                    <?php
-                    $cyclePrice = $availableCycles[$billingCycle]['total'];
-                    $calculations = calculateOrderTotal($cyclePrice, $package['setup_fee'], $package['gst_percentage'], $package['processing_fee']);
-                    ?>
-                    
-                    <div class="price-display">
-                        ₹<?php echo number_format($calculations['total_amount'], 2); ?>
-                    </div>
-                    
-                    <?php if ($billingCycle !== 'monthly'): ?>
-                    <?php
-                    $monthlyEquivalent = $availableCycles[$billingCycle]['price'];
-                    ?>
-                    <p class="text-center text-muted">₹<?php echo number_format($monthlyEquivalent, 2); ?> per month</p>
-                    <?php endif; ?>
-                    
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 20px;">
-                        <small class="text-muted">You will be billed ₹<?php echo number_format($cyclePrice, 2); ?> for <?php echo ucfirst(str_replace('years', ' Years', $billingCycle)); ?> period</small>
-                    </div>
-                    
-                    <?php if ($isLoggedIn): ?>
-                        <a href="checkout.php?package=<?php echo $packageSlug; ?>&cycle=<?php echo $billingCycle; ?>" class="btn-checkout">
-                            Continue to Payment <i class="bi bi-arrow-right"></i>
-                        </a>
-                    <?php else: ?>
-                        <a href="login.php?redirect=<?php echo urlencode('select-package.php?package=' . $packageSlug . '&cycle=' . $billingCycle); ?>" class="btn-login">
-                            Login to Continue <i class="bi bi-box-arrow-in-right"></i>
-                        </a>
-                        <p class="text-center mt-3">
-                            <small class="text-muted">Don't have an account? <a href="register.php">Sign up</a></small>
-                        </p>
-                    <?php endif; ?>
+            <div class="order-summary">
+                <div class="summary-header">
+                    <h2>Order Summary</h2>
                 </div>
+
+                <div class="summary-row">
+                    <span class="summary-label">Package:</span>
+                    <span class="summary-value"><?php echo htmlspecialchars($package['name']); ?></span>
+                </div>
+
+                <div class="summary-row">
+                    <span class="summary-label">Billing Cycle:</span>
+                    <span class="summary-value"><?php echo $availableCycles[$billingCycle]['label']; ?></span>
+                </div>
+
+                <div class="summary-divider"></div>
+
+                <div class="price-display">
+                    <div class="price-amount">₹<?php echo number_format($calculations['total_amount'], 2); ?></div>
+                    <div class="price-period">₹<?php echo number_format($availableCycles[$billingCycle]['price'], 2); ?> per month</div>
+                </div>
+
+                <div class="billing-notice">
+                    <i class="fas fa-info-circle"></i> You will be billed ₹<?php echo number_format($cyclePrice, 2); ?> for <?php echo ucfirst(str_replace('years', ' Years', $billingCycle)); ?> period
+                </div>
+
+                <?php if ($isLoggedIn): ?>
+                    <a href="checkout.php?package=<?php echo urlencode($packageSlug); ?>&cycle=<?php echo $billingCycle; ?><?php echo $renewOrderId ? '&renew=' . $renewOrderId : ''; ?>" class="btn-continue">
+                        <i class="fas fa-lock"></i> Login to Continue
+                    </a>
+                <?php else: ?>
+                    <a href="login.php?redirect=<?php echo urlencode('select-package.php?package=' . $packageSlug . '&cycle=' . $billingCycle); ?>" class="btn-continue">
+                        <i class="fas fa-lock"></i> Login to Continue
+                    </a>
+                    <p class="signup-text">
+                        Don't have an account? <a href="register.php">Sign up</a>
+                    </p>
+                <?php endif; ?>
             </div>
         </div>
     </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
