@@ -5,14 +5,9 @@ require_once 'components/settings_helper.php';
 
 // Get company settings
 $companyName = getCompanyName($conn);
-$companyLogo = getCompanyLogo($conn);
 $companyEmail = getSetting($conn, 'company_email', 'info@example.com');
 
-// Check if user is logged in
-$isLoggedIn = isset($_SESSION['user_id']);
-$isAdmin = $isLoggedIn && isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin';
-
-$pageTitle = "Refund Policy - " . $companyName;
+$pageTitle = "Refund Policy - InfraLabs Cloud";
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -21,14 +16,10 @@ $pageTitle = "Refund Policy - " . $companyName;
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
-    <meta name="description" content="Refund Policy for <?php echo htmlspecialchars($companyName); ?>. Learn about our 7-day money-back guarantee and refund process.">
+    <meta name="description" content="Refund Policy for InfraLabs Cloud. Learn about our 7-day money-back guarantee and refund process.">
     
     <!-- Favicon -->
-    <?php if (!empty($companyLogo)): ?>
-        <link rel="icon" href="<?php echo htmlspecialchars($companyLogo); ?>" type="image/x-icon">
-    <?php else: ?>
-        <link rel="icon" href="netic/images/fevicon.png" type="image/gif" />
-    <?php endif; ?>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☁️</text></svg>">
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -42,48 +33,7 @@ $pageTitle = "Refund Policy - " . $companyName;
 </head>
 
 <body>
-    <!-- Header Navigation -->
-    <header class="header">
-        <div class="container">
-            <nav class="navbar">
-                <div class="navbar-brand">
-                    <?php if (!empty($companyLogo)): ?>
-                        <a href="index.php">
-                            <img src="<?php echo htmlspecialchars($companyLogo); ?>" alt="<?php echo htmlspecialchars($companyName); ?>" class="logo-img">
-                        </a>
-                    <?php else: ?>
-                        <a href="index.php" style="text-decoration: none; color: inherit;">
-                            <div class="logo-box">
-                                <i class="fas fa-cloud"></i>
-                                <span class="logo-text"><?php echo htmlspecialchars($companyName); ?></span>
-                            </div>
-                        </a>
-                    <?php endif; ?>
-                </div>
-
-                <button class="mobile-toggle" id="mobileToggle">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
-
-                <div class="navbar-menu" id="navbarMenu">
-                    <a href="index.php" class="nav-link">Home</a>
-                    <a href="index.php#features" class="nav-link">Features</a>
-                    <a href="index.php#pricing" class="nav-link">Pricing</a>
-                    <?php if ($isLoggedIn): ?>
-                        <a href="<?php echo $isAdmin ? 'admin/index.php' : 'user/index.php'; ?>" class="nav-link">
-                            <i class="fas fa-user"></i> Dashboard
-                        </a>
-                        <a href="logout.php" class="btn-secondary">Logout</a>
-                    <?php else: ?>
-                        <a href="login.php" class="nav-link">Login</a>
-                        <a href="register.php" class="btn-primary">Get Started</a>
-                    <?php endif; ?>
-                </div>
-            </nav>
-        </div>
-    </header>
+    <?php include 'components/header.php'; ?>
 
     <!-- Page Hero -->
     <section class="page-hero">
@@ -300,61 +250,6 @@ $pageTitle = "Refund Policy - " . $companyName;
         </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-grid">
-                <div class="footer-column">
-                    <div class="footer-brand">
-                        <i class="fas fa-cloud"></i>
-                        <span><?php echo htmlspecialchars($companyName); ?></span>
-                    </div>
-                    <p class="footer-description">
-                        Professional hosting solutions with 99.99% uptime guarantee, 
-                        24/7 support, and cutting-edge technology.
-                    </p>
-                </div>
-
-                <div class="footer-column">
-                    <h4>Hosting</h4>
-                    <ul>
-                        <li><a href="index.php#pricing">Shared Hosting</a></li>
-                        <li><a href="index.php#pricing">VPS Hosting</a></li>
-                        <li><a href="index.php#pricing">WordPress Hosting</a></li>
-                    </ul>
-                </div>
-
-                <div class="footer-column">
-                    <h4>Company</h4>
-                    <ul>
-                        <li><a href="about.php">About Us</a></li>
-                        <li><a href="index.php#reviews">Reviews</a></li>
-                        <li><a href="index.php">Home</a></li>
-                    </ul>
-                </div>
-
-                <div class="footer-column">
-                    <h4>Legal</h4>
-                    <ul>
-                        <li><a href="privacy-policy.php">Privacy Policy</a></li>
-                        <li><a href="terms-conditions.php">Terms & Conditions</a></li>
-                        <li><a href="refund-policy.php">Refund Policy</a></li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="footer-bottom">
-                <p>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($companyName); ?>. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
-
-    <!-- Scripts -->
-    <script>
-        document.getElementById('mobileToggle').addEventListener('click', function() {
-            document.getElementById('navbarMenu').classList.toggle('active');
-            this.classList.toggle('active');
-        });
-    </script>
+    <?php include 'components/footer.php'; ?>
 </body>
 </html>
