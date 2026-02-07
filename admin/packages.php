@@ -31,6 +31,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'processing_fee' => floatval($_POST['processing_fee']),
                 'status' => $_POST['status'],
                 'is_popular' => isset($_POST['is_popular']) ? 1 : 0,
+                'is_private' => isset($_POST['is_private']) ? 1 : 0,
+                'auto_renewal_enabled' => isset($_POST['auto_renewal_enabled']) ? 1 : 0,
+                'renewal_reminder_days' => intval($_POST['renewal_reminder_days'] ?? 7),
                 'sort_order' => intval($_POST['sort_order'])
             ];
             
@@ -69,6 +72,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'processing_fee' => floatval($_POST['processing_fee']),
                 'status' => $_POST['status'],
                 'is_popular' => isset($_POST['is_popular']) ? 1 : 0,
+                'is_private' => isset($_POST['is_private']) ? 1 : 0,
+                'auto_renewal_enabled' => isset($_POST['auto_renewal_enabled']) ? 1 : 0,
+                'renewal_reminder_days' => intval($_POST['renewal_reminder_days'] ?? 7),
                 'sort_order' => intval($_POST['sort_order'])
             ];
             
@@ -206,6 +212,12 @@ include 'includes/header.php';
                                 <div class="user-name">
                                     <?php if ($package['is_popular']): ?>
                                         <i class="bi bi-star-fill text-warning"></i>
+                                    <?php endif; ?>
+                                    <?php if (isset($package['is_private']) && $package['is_private']): ?>
+                                        <i class="bi bi-lock-fill text-danger" title="Private Package"></i>
+                                    <?php endif; ?>
+                                    <?php if (isset($package['auto_renewal_enabled']) && !$package['auto_renewal_enabled']): ?>
+                                        <i class="bi bi-x-circle text-secondary" title="Auto-renewal disabled"></i>
                                     <?php endif; ?>
                                     <?php echo htmlspecialchars($package['name']); ?>
                                 </div>
@@ -379,6 +391,32 @@ include 'includes/header.php';
                             <input type="number" class="form-control" id="sort_order" name="sort_order" value="0">
                         </div>
                     </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_private" name="is_private">
+                                <label class="form-check-label" for="is_private">
+                                    <i class="bi bi-lock-fill text-danger"></i> Private Package
+                                </label>
+                            </div>
+                            <small class="text-muted">Hide from public, admin only</small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="auto_renewal_enabled" name="auto_renewal_enabled" checked>
+                                <label class="form-check-label" for="auto_renewal_enabled">
+                                    <i class="bi bi-arrow-repeat text-success"></i> Auto-Renewal
+                                </label>
+                            </div>
+                            <small class="text-muted">Allow automatic renewals</small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Renewal Reminder (Days)</label>
+                            <input type="number" class="form-control" id="renewal_reminder_days" name="renewal_reminder_days" value="7" min="1" max="30">
+                            <small class="text-muted">Days before expiry</small>
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -432,6 +470,9 @@ function editPackage(packageId) {
             document.getElementById('processing_fee').value = p.processing_fee || 0;
             document.getElementById('status').value = p.status;
             document.getElementById('is_popular').checked = p.is_popular == 1;
+            document.getElementById('is_private').checked = p.is_private == 1;
+            document.getElementById('auto_renewal_enabled').checked = p.auto_renewal_enabled == 1;
+            document.getElementById('renewal_reminder_days').value = p.renewal_reminder_days || 7;
             document.getElementById('sort_order').value = p.sort_order || 0;
             
             const modal = new bootstrap.Modal(document.getElementById('packageModal'));
