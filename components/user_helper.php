@@ -16,6 +16,7 @@ function getUserOrders($conn, $userId, $search = '', $limit = null, $offset = 0)
             LEFT JOIN hosting_packages hp ON ho.package_id = hp.id 
             WHERE ho.user_id = ? 
             AND (ho.order_number LIKE ? OR hp.name LIKE ?)
+            AND ho.order_status != 'upgraded'
             AND NOT EXISTS (SELECT 1 FROM hosting_orders WHERE renewed_from_order_id = ho.id)
             ORDER BY ho.created_at DESC 
             LIMIT ? OFFSET ?
@@ -29,6 +30,7 @@ function getUserOrders($conn, $userId, $search = '', $limit = null, $offset = 0)
                 FROM hosting_orders ho 
                 LEFT JOIN hosting_packages hp ON ho.package_id = hp.id 
                 WHERE ho.user_id = ? 
+                AND ho.order_status != 'upgraded'
                 AND NOT EXISTS (SELECT 1 FROM hosting_orders WHERE renewed_from_order_id = ho.id)
                 ORDER BY ho.created_at DESC 
                 LIMIT ? OFFSET ?
@@ -41,6 +43,7 @@ function getUserOrders($conn, $userId, $search = '', $limit = null, $offset = 0)
                 FROM hosting_orders ho 
                 LEFT JOIN hosting_packages hp ON ho.package_id = hp.id 
                 WHERE ho.user_id = ? 
+                AND ho.order_status != 'upgraded'
                 AND NOT EXISTS (SELECT 1 FROM hosting_orders WHERE renewed_from_order_id = ho.id)
                 ORDER BY ho.created_at DESC
             ");
@@ -351,6 +354,119 @@ function getDaysUntilExpiry($expiryDate) {
  */
 function isOrderExpiringSoon($expiryDate, $days = 7) {
     return getDaysUntilExpiry($expiryDate) <= $days;
+}
+
+/**
+ * Format time ago (e.g., "2 hours ago")
+ */
+function timeAgo($timestamp) {
+    $time = strtotime($timestamp);
+    $diff = time() - $time;
+    
+    if ($diff < 60) {
+        return 'Just now';
+    } elseif ($diff < 3600) {
+        $mins = floor($diff / 60);
+        return $mins . ' minute' . ($mins > 1 ? 's' : '') . ' ago';
+    } elseif ($diff < 86400) {
+        $hours = floor($diff / 3600);
+        return $hours . ' hour' . ($hours > 1 ? 's' : '') . ' ago';
+    } elseif ($diff < 604800) {
+        $days = floor($diff / 86400);
+        return $days . ' day' . ($days > 1 ? 's' : '') . ' ago';
+    } elseif ($diff < 2592000) {
+        $weeks = floor($diff / 604800);
+        return $weeks . ' week' . ($weeks > 1 ? 's' : '') . ' ago';
+    } else {
+        return formatDate($timestamp);
+    }
+}
+
+/**
+ * Get upgrade options for a package
+ */
+function getUpgradeOptions($conn, $currentPackageId, $billingCycle) {
+    require_once __DIR__ . '/hosting_helper.php';
+    
+    // Get current package price
+    $currentPackage = getPackageById($conn, $currentPackageId);
+    if (!$currentPackage) {
+        return [];
+    }
+    
+    $priceColumn = 'price_' . $billingCycle;
+    $currentPrice = $currentPackage[$priceColumn] ?? 0;
+    
+    // Get packages with higher price for the same billing cycle
+    $stmt = $conn->prepare("
+        SELECT * FROM hosting_packages 
+        WHERE status = 'active' 
+        AND is_admin_only = 0
+        AND id != ?
+        AND $priceColumn > ?
+        AND $priceColumn IS NOT NULL
+        ORDER BY $priceColumn ASC
+    ");
+    $stmt->bind_param("id", $currentPackageId, $currentPrice);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $packages = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    
+    return $packages;
+}
+
+/**
+ * Get order by ID with package details
+ */
+function getOrderByIdWithDetails($conn, $orderId) {
+    $stmt = $conn->prepare("
+        SELECT ho.*, hp.name as package_name, hp.slug as package_slug
+        FROM hosting_orders ho
+        LEFT JOIN hosting_packages hp ON ho.package_id = hp.id
+        WHERE ho.id = ?
+    ");
+    $stmt->bind_param("i", $orderId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $order = $result->fetch_assoc();
+    $stmt->close();
+    return $order;
+}
+
+/**
+ * Calculate prorated upgrade price
+ */
+function calculateUpgradePrice($currentOrder, $newPackage, $billingCycle) {
+    require_once __DIR__ . '/hosting_helper.php';
+    
+    $currentPrice = $currentOrder['base_price'];
+    $newPrice = getPackagePrice($newPackage, $billingCycle);
+    
+    // Calculate remaining days
+    $expiryDate = strtotime($currentOrder['expiry_date']);
+    $today = time();
+    $remainingDays = max(0, ($expiryDate - $today) / (60 * 60 * 24));
+    
+    // Calculate total days in billing cycle
+    $totalDays = 30; // Default monthly
+    switch ($billingCycle) {
+        case 'yearly':
+            $totalDays = 365;
+            break;
+        case '2years':
+            $totalDays = 730;
+            break;
+        case '4years':
+            $totalDays = 1460;
+            break;
+    }
+    
+    // Calculate prorated amount
+    $priceDifference = $newPrice - $currentPrice;
+    $proratedAmount = ($priceDifference / $totalDays) * $remainingDays;
+    
+    return max(0, $proratedAmount);
 }
 
 ?>

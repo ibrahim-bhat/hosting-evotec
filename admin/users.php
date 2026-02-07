@@ -170,6 +170,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
             break;
             
+        case 'assign_package':
+            require_once '../components/hosting_helper.php';
+            
+            $packageId = intval($_POST['package_id']);
+            $billingCycle = sanitizeInput($_POST['billing_cycle']);
+            $notes = isset($_POST['notes']) ? sanitizeInput($_POST['notes']) : '';
+            
+            // Validate inputs
+            if (empty($packageId) || empty($billingCycle)) {
+                echo json_encode(['success' => false, 'message' => 'Package and billing cycle are required']);
+                break;
+            }
+            
+            // Create order
+            $orderId = createOrder($conn, $userId, $packageId, $billingCycle);
+            
+            if ($orderId) {
+                // Mark as manual assignment and activate
+                $adminId = $_SESSION['user_id'];
+                $stmt = $conn->prepare("UPDATE hosting_orders SET 
+                    assigned_by_admin_id = ?, 
+                    is_manual_assignment = 1, 
+                    assignment_notes = ?,
+                    payment_status = 'paid',
+                    order_status = 'active',
+                    payment_date = NOW()
+                    WHERE id = ?");
+                $stmt->bind_param("isi", $adminId, $notes, $orderId);
+                $stmt->execute();
+                $stmt->close();
+                
+                echo json_encode(['success' => true, 'message' => 'Package assigned successfully']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to assign package']);
+            }
+            break;
+            
+        case 'update_server_credentials':
+            $serverUsername = sanitizeInput($_POST['server_username']);
+            $serverPassword = $_POST['server_password']; // Don't sanitize password
+            $serverUrl = sanitizeInput($_POST['server_url']);
+            
+            $stmt = $conn->prepare("UPDATE users SET server_username = ?, server_password = ?, server_url = ? WHERE id = ?");
+            $stmt->bind_param("sssi", $serverUsername, $serverPassword, $serverUrl, $userId);
+            $success = $stmt->execute();
+            $stmt->close();
+            
+            echo json_encode(['success' => $success, 'message' => $success ? 'Server credentials updated successfully' : 'Failed to update server credentials']);
+            break;
+            
         case 'delete':
             $success = deleteUser($conn, $userId);
             echo json_encode(['success' => $success, 'message' => $success ? 'User deleted successfully' : 'Failed to delete user']);
@@ -255,6 +305,13 @@ include 'includes/header.php';
                                                         <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); editUser(<?php echo $user['id']; ?>)">
                                                             <i class="bi bi-pencil-fill"></i> Edit User
                                                         </a></li>
+                                                        <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); assignPackage(<?php echo $user['id']; ?>)">
+                                                            <i class="bi bi-box-seam"></i> Assign Package
+                                                        </a></li>
+                                                        <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); editServerCredentials(<?php echo $user['id']; ?>)">
+                                                            <i class="bi bi-hdd-network"></i> Server Credentials
+                                                        </a></li>
+                                                        <li><hr class="dropdown-divider"></li>
                                                         <li><a class="dropdown-item text-danger" href="#" onclick="event.preventDefault(); deleteUser(<?php echo $user['id']; ?>)">
                                                             <i class="bi bi-trash-fill"></i> Delete User
                                                         </a></li>
@@ -390,6 +447,110 @@ include 'includes/header.php';
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" onclick="saveUser()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Server Credentials Modal -->
+<div class="modal fade" id="serverCredentialsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Manage Server Credentials</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="serverCredentialsForm">
+                    <input type="hidden" id="server_user_id" name="user_id">
+                    
+                    <div class="mb-3">
+                        <label for="server_url" class="form-label">Server URL</label>
+                        <input type="url" class="form-control" id="server_url" name="server_url" 
+                               value="https://server.infralabs.cloud" required>
+                        <small class="text-muted">CloudPanel server URL</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="server_username" class="form-label">Server Username</label>
+                        <input type="text" class="form-control" id="server_username" name="server_username" 
+                               placeholder="Enter CloudPanel username" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="server_password" class="form-label">Server Password</label>
+                        <input type="text" class="form-control" id="server_password" name="server_password" 
+                               placeholder="Enter CloudPanel password" required>
+                        <small class="text-muted">This will be stored as plain text for user access</small>
+                    </div>
+                    
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <small>These credentials will be visible to the user in their profile for CloudPanel login.</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveServerCredentials()">Save Credentials</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Package Modal -->
+<div class="modal fade" id="assignPackageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Manually Assign Package</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="assignPackageForm">
+                    <input type="hidden" id="assign_user_id" name="user_id">
+                    
+                    <div class="mb-3">
+                        <label for="package_id" class="form-label">Select Package <span class="text-danger">*</span></label>
+                        <select class="form-select" id="package_id" name="package_id" required>
+                            <option value="">Choose a package...</option>
+                            <?php
+                            require_once '../components/hosting_helper.php';
+                            $packages = getAllPackages($conn, 'active');
+                            foreach ($packages as $pkg):
+                            ?>
+                                <option value="<?php echo $pkg['id']; ?>">
+                                    <?php echo htmlspecialchars($pkg['name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="billing_cycle" class="form-label">Billing Cycle <span class="text-danger">*</span></label>
+                        <select class="form-select" id="billing_cycle" name="billing_cycle" required>
+                            <option value="monthly">Monthly</option>
+                            <option value="yearly">Yearly</option>
+                            <option value="2years">2 Years</option>
+                            <option value="4years">4 Years</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="assignment_notes" class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" id="assignment_notes" name="notes" rows="3" 
+                                  placeholder="Add any notes about this assignment..."></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <small>This will create an active order for the user with payment status marked as paid.</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="savePackageAssignment()">Assign Package</button>
             </div>
         </div>
     </div>
@@ -542,6 +703,78 @@ function deleteUser(userId) {
     .then(data => {
         showFlash(data.success ? 'success' : 'error', data.message);
         if (data.success) setTimeout(() => location.reload(), 1500);
+    });
+}
+
+// Edit server credentials
+function editServerCredentials(userId) {
+    event.preventDefault();
+    
+    fetch('users.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `action=get_user&user_id=${userId}`
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('server_user_id').value = data.user.id;
+            document.getElementById('server_url').value = data.user.server_url || 'https://server.infralabs.cloud';
+            document.getElementById('server_username').value = data.user.server_username || '';
+            document.getElementById('server_password').value = data.user.server_password || '';
+            
+            const modal = new bootstrap.Modal(document.getElementById('serverCredentialsModal'));
+            modal.show();
+        } else {
+            showFlash('error', data.message);
+        }
+    });
+}
+
+// Save server credentials
+function saveServerCredentials() {
+    const formData = new FormData(document.getElementById('serverCredentialsForm'));
+    formData.append('action', 'update_server_credentials');
+    
+    fetch('users.php', {
+        method: 'POST',
+        body: new URLSearchParams(formData)
+    })
+    .then(res => res.json())
+    .then(data => {
+        showFlash(data.success ? 'success' : 'error', data.message);
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('serverCredentialsModal')).hide();
+            setTimeout(() => location.reload(), 1500);
+        }
+    });
+}
+
+// Assign package to user
+function assignPackage(userId) {
+    event.preventDefault();
+    
+    document.getElementById('assign_user_id').value = userId;
+    const modal = new bootstrap.Modal(document.getElementById('assignPackageModal'));
+    modal.show();
+}
+
+// Save package assignment
+function savePackageAssignment() {
+    const formData = new FormData(document.getElementById('assignPackageForm'));
+    formData.append('action', 'assign_package');
+    
+    fetch('users.php', {
+        method: 'POST',
+        body: new URLSearchParams(formData)
+    })
+    .then(res => res.json())
+    .then(data => {
+        showFlash(data.success ? 'success' : 'error', data.message);
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('assignPackageModal')).hide();
+            setTimeout(() => location.reload(), 1500);
+        }
     });
 }
 </script>

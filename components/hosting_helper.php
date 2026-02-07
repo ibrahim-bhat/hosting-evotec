@@ -206,16 +206,16 @@ function calculateOrderTotal(...$args) {
  * Calculate order total with taxes and fees (legacy function for backward compatibility)
  */
 function calculateOrderTotalLegacy($basePrice, $setupFee, $gstPercentage, $processingFee) {
-    $subtotal = $basePrice + $setupFee;
-    $gstAmount = ($subtotal * $gstPercentage) / 100;
-    $total = $subtotal + $gstAmount + $processingFee;
+    $subtotal = round($basePrice + $setupFee, 2);
+    $gstAmount = round(($subtotal * $gstPercentage) / 100, 2);
+    $total = round($subtotal + $gstAmount + $processingFee, 2);
     
     return [
-        'base_price' => $basePrice,
-        'setup_fee' => $setupFee,
+        'base_price' => round($basePrice, 2),
+        'setup_fee' => round($setupFee, 2),
         'subtotal' => $subtotal,
         'gst_amount' => $gstAmount,
-        'processing_fee' => $processingFee,
+        'processing_fee' => round($processingFee, 2),
         'total_amount' => $total
     ];
 }

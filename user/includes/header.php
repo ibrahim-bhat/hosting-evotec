@@ -54,7 +54,6 @@ $companyLogo = getCompanyLogo($conn);
                     <span class="logo-text-user"><?php echo strtoupper(substr($companyName, 0, 1)); ?></span>
                 </div>
             <?php endif; ?>
-            <span class="brand-name"><?php echo htmlspecialchars($companyName); ?></span>
         </div>
         
         <!-- Menu Title -->
@@ -74,9 +73,13 @@ $companyLogo = getCompanyLogo($conn);
                 <i class="bi bi-cart-fill"></i>
                 <span>Orders</span>
             </a>
-            <a href="websites.php" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'websites.php') ? 'active' : ''; ?>">
+            <!-- <a href="websites.php" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'websites.php') ? 'active' : ''; ?>">
                 <i class="bi bi-globe"></i>
                 <span>Websites</span>
+            </a> -->
+            <a href="https://server.infralabs.cloud" class="nav-item" target="_blank">
+                <i class="bi bi-hdd-network"></i>
+                <span>Server Panel</span>
             </a>
             <!-- <a href="billing.php" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'billing.php') ? 'active' : ''; ?>">
                 <i class="bi bi-cash-coin"></i>

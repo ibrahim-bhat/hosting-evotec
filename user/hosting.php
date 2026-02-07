@@ -4,6 +4,13 @@ require_once '../components/user_helper.php';
 
 $userId = $_SESSION['user_id'];
 
+// Auto-cleanup: Remove pending orders older than 30 minutes
+$cutoffTime = date('Y-m-d H:i:s', strtotime('-30 minutes'));
+$stmt = $conn->prepare("DELETE FROM hosting_orders WHERE user_id = ? AND payment_status = 'pending' AND created_at < ?");
+$stmt->bind_param("is", $userId, $cutoffTime);
+$stmt->execute();
+$stmt->close();
+
 // Auto-fix: Add column if it doesn't exist
 $result = mysqli_query($conn, "SHOW COLUMNS FROM hosting_orders LIKE 'renewed_from_order_id'");
 if (mysqli_num_rows($result) == 0) {
@@ -63,7 +70,14 @@ $pageTitle = "My Hosting";
                         Order #<?php echo htmlspecialchars($order['order_number']); ?>
                     </div>
                     
-                    <div class="package-price"><?php echo formatCurrency($order['total_amount']); ?></div>
+                    <?php
+                    // Get package details to show full price (not prorated upgrade price)
+                    require_once '../components/hosting_helper.php';
+                    $package = getPackageById($conn, $order['package_id']);
+                    $packagePrice = $package ? getPackagePrice($package, $order['billing_cycle']) : $order['total_amount'];
+                    ?>
+                    
+                    <div class="package-price"><?php echo formatCurrency($packagePrice); ?></div>
                     <div class="package-period">
                         <?php echo ucfirst($order['billing_cycle']); ?> billing
                     </div>
@@ -108,18 +122,26 @@ $pageTitle = "My Hosting";
                         <?php elseif ($order['expiry_date'] && strtotime($order['expiry_date']) < time()): ?>
                             <a href="renew.php?order_id=<?php echo $order['id']; ?>" class="btn btn-warning flex-fill">
                                 <i class="bi bi-arrow-repeat me-1"></i>
-                                Renew / Upgrade
+                                Renew
+                            </a>
+                            <a href="upgrade.php?order_id=<?php echo $order['id']; ?>" class="btn btn-success flex-fill">
+                                <i class="bi bi-arrow-up-circle me-1"></i>
+                                Upgrade
                             </a>
                         <?php elseif (isOrderExpiringSoon($order['expiry_date'])): ?>
                             <a href="renew.php?order_id=<?php echo $order['id']; ?>" class="btn btn-warning flex-fill">
                                 <i class="bi bi-arrow-repeat me-1"></i>
-                                Renew / Upgrade
+                                Renew
+                            </a>
+                            <a href="upgrade.php?order_id=<?php echo $order['id']; ?>" class="btn btn-success flex-fill">
+                                <i class="bi bi-arrow-up-circle me-1"></i>
+                                Upgrade
                             </a>
                         <?php else: ?>
-                            <button class="btn btn-secondary flex-fill" disabled>
-                                <i class="bi bi-check-circle me-1"></i>
-                                Paid
-                            </button>
+                            <a href="upgrade.php?order_id=<?php echo $order['id']; ?>" class="btn btn-success flex-fill">
+                                <i class="bi bi-arrow-up-circle me-1"></i>
+                                Upgrade Plan
+                            </a>
                         <?php endif; ?>
                         
                         <a href="orders.php?id=<?php echo $order['id']; ?>" class="btn btn-action">

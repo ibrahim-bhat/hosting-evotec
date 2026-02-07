@@ -9,23 +9,50 @@ $user = getUserProfile($conn, $userId);
 
 // Process profile update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    if ($_POST['action'] === 'update_profile') {
+    $action = $_POST['action'];
+    
+    if ($action === 'update_profile') {
         $name = sanitizeInput($_POST['name']);
+        $email = sanitizeInput($_POST['email']);
         $phone = sanitizeInput($_POST['phone']);
         
         if (empty($name)) {
             setFlashMessage('error', 'Name is required');
-        } else {
-            if (updateUserProfile($conn, $userId, $name, $phone)) {
-                setFlashMessage('success', 'Profile updated successfully');
-                // Update session
-                $_SESSION['user_name'] = $name;
-                // Refresh user data
-                $user = getUserProfile($conn, $userId);
-            } else {
-                setFlashMessage('error', 'Failed to update profile');
-            }
+            redirect('profile.php');
         }
+        if (empty($email)) {
+            setFlashMessage('error', 'Email is required');
+            redirect('profile.php');
+        }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            setFlashMessage('error', 'Invalid email format');
+            redirect('profile.php');
+        }
+
+        // Check if email is already taken by another user
+        $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
+        $stmt->bind_param("si", $email, $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows > 0) {
+            setFlashMessage('error', 'Email address is already in use by another account');
+            redirect('profile.php');
+        }
+        $stmt->close();
+        
+        $stmt = $conn->prepare("UPDATE users SET name = ?, email = ?, phone = ? WHERE id = ?");
+        $stmt->bind_param("sssi", $name, $email, $phone, $userId);
+        
+        if ($stmt->execute()) {
+            setFlashMessage('success', 'Profile updated successfully');
+            // Update session if name changed
+            $_SESSION['user_name'] = $name;
+        } else {
+            setFlashMessage('error', 'Failed to update profile');
+        }
+        $stmt->close();
+        redirect('profile.php');
     } elseif ($_POST['action'] === 'update_password') {
         $currentPassword = $_POST['current_password'];
         $newPassword = $_POST['new_password'];
@@ -127,33 +154,9 @@ $pageTitle = "Profile";
                         <input type="email" 
                                class="form-control" 
                                id="email" 
+                               name="email" 
                                value="<?php echo htmlspecialchars($user['email']); ?>" 
-                               disabled>
-                        <div class="form-text">Email address cannot be changed</div>
-                    </div>
-                    
-                    <div class="col-md-6">
-                        <label for="role" class="form-label">
-                            <i class="bi bi-shield-check me-1"></i>
-                            Account Type
-                        </label>
-                        <input type="text" 
-                               class="form-control" 
-                               id="role" 
-                               value="<?php echo ucfirst($user['role']); ?>" 
-                               disabled>
-                    </div>
-                    
-                    <div class="col-md-6">
-                        <label for="status" class="form-label">
-                            <i class="bi bi-circle-fill me-1"></i>
-                            Account Status
-                        </label>
-                        <input type="text" 
-                               class="form-control" 
-                               id="status" 
-                               value="<?php echo ucfirst($user['status']); ?>" 
-                               disabled>
+                               required>
                     </div>
                     
                     <div class="col-md-6">
@@ -186,33 +189,6 @@ $pageTitle = "Profile";
             <div class="card-header">
                 <h2 class="card-title">
                     <i class="bi bi-camera me-2"></i>
-                    Profile Picture
-                </h2>
-                <p class="card-subtitle">Your account avatar</p>
-            </div>
-            
-            <div class="profile-picture-section">
-                <div class="profile-avatar-large">
-                    <?php if (!empty($user['profile_picture'])): ?>
-                        <img src="../<?php echo htmlspecialchars($user['profile_picture']); ?>" 
-                             alt="Profile Picture" 
-                             class="avatar-img-large">
-                    <?php else: ?>
-                        <div class="avatar-placeholder-large">
-                            <i class="bi bi-person"></i>
-                        </div>
-                    <?php endif; ?>
-                </div>
-                <div class="profile-picture-actions">
-                    <button type="button" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-camera me-1"></i>
-                        Change Picture
-                    </button>
-                    <p class="picture-hint">JPG, PNG or GIF. Max size 2MB.</p>
-                </div>
-            </div>
-        </div>
-        
         <!-- Account Quick Info -->
         <div class="content-card">
             <div class="card-header">
@@ -222,54 +198,118 @@ $pageTitle = "Profile";
                 </h2>
             </div>
             
-            <div class="account-info-list">
-                <div class="info-item">
-                    <div class="info-icon">
-                        <i class="bi bi-person-badge"></i>
-                    </div>
-                    <div class="info-content">
-                        <div class="info-label">User ID</div>
-                        <div class="info-value">#<?php echo $user['id']; ?></div>
-                    </div>
-                </div>
-                
-                <div class="info-item">
-                    <div class="info-icon">
-                        <i class="bi bi-calendar-event"></i>
-                    </div>
-                    <div class="info-content">
-                        <div class="info-label">Joined</div>
-                        <div class="info-value"><?php echo formatDate($user['created_at']); ?></div>
-                    </div>
-                </div>
-                
-                <div class="info-item">
-                    <div class="info-icon">
-                        <i class="bi bi-shield-check"></i>
-                    </div>
-                    <div class="info-content">
-                        <div class="info-label">Status</div>
-                        <div class="info-value">
-                            <span class="badge bg-success"><?php echo ucfirst($user['status']); ?></span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="info-item">
-                    <div class="info-icon">
-                        <i class="bi bi-person-gear"></i>
-                    </div>
-                    <div class="info-content">
-                        <div class="info-label">Role</div>
-                        <div class="info-value">
-                            <span class="badge bg-primary"><?php echo ucfirst($user['role']); ?></span>
+            <div class="row g-3" style="padding: 20px;">
+                <div class="col-12">
+                    <div class="d-flex align-items-center p-3" style="background: #f8f9fa; border-radius: 8px;">
+                        <i class="bi bi-calendar-event" style="font-size: 24px; color: #4f46e5; margin-right: 15px;"></i>
+                        <div>
+                            <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">MEMBER SINCE</div>
+                            <div style="font-weight: 600; color: #1f2937;"><?php echo date('M d, Y', strtotime($user['created_at'])); ?></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+        
+        <!-- Server Access Credentials -->
+        <div class="content-card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i class="bi bi-hdd-network me-2"></i>
+                    Server Access
+                </h2>
+                <p class="card-subtitle">CloudPanel server login credentials</p>
+            </div>
+            
+            <?php if (!empty($user['server_username']) || !empty($user['server_url'])): ?>
+                <div class="account-info-list">
+                    <div class="info-item">
+                        <div class="info-icon">
+                            <i class="bi bi-link-45deg"></i>
+                        </div>
+                        <div class="info-content">
+                            <div class="info-label">Server URL</div>
+                            <div class="info-value">
+                                <a href="<?php echo htmlspecialchars($user['server_url'] ?? 'https://server.infralabs.cloud'); ?>" 
+                                   target="_blank" 
+                                   class="text-primary">
+                                    <?php echo htmlspecialchars($user['server_url'] ?? 'https://server.infralabs.cloud'); ?>
+                                    <i class="bi bi-box-arrow-up-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <?php if (!empty($user['server_username'])): ?>
+                        <div class="info-item">
+                            <div class="info-icon">
+                                <i class="bi bi-person-circle"></i>
+                            </div>
+                            <div class="info-content">
+                                <div class="info-label">Username</div>
+                                <div class="info-value">
+                                    <code><?php echo htmlspecialchars($user['server_username']); ?></code>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php if (!empty($user['server_password'])): ?>
+                        <div class="info-item">
+                            <div class="info-icon">
+                                <i class="bi bi-key-fill"></i>
+                            </div>
+                            <div class="info-content">
+                                <div class="info-label">Password</div>
+                                <div class="info-value">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <code id="serverPassword" style="letter-spacing: 2px;">••••••••</code>
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-secondary" 
+                                                onclick="togglePassword()"
+                                                id="toggleBtn">
+                                            <i class="bi bi-eye" id="toggleIcon"></i>
+                                        </button>
+                                    </div>
+                                    <input type="hidden" id="actualPassword" value="<?php echo htmlspecialchars($user['server_password']); ?>">
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <div class="alert alert-info mt-3 mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <small>Use these credentials to log in to the CloudPanel server management interface.</small>
+                    </div>
+                </div>
+            <?php else: ?>
+                <div class="empty-state py-4">
+                    <div class="empty-state-icon">
+                        <i class="bi bi-hdd-network"></i>
+                    </div>
+                    <h5 class="empty-state-title">No Server Access</h5>
+                    <p class="empty-state-text">Server credentials have not been assigned yet. Contact admin for access.</p>
+                </div>
+            <?php endif; ?>
+        </div>
     </div>
 </div>
+
+<script>
+function togglePassword() {
+    const passwordField = document.getElementById('serverPassword');
+    const actualPassword = document.getElementById('actualPassword').value;
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (passwordField.textContent === '••••••••') {
+        passwordField.textContent = actualPassword;
+        toggleIcon.className = 'bi bi-eye-slash';
+    } else {
+        passwordField.textContent = '••••••••';
+        toggleIcon.className = 'bi bi-eye';
+    }
+}
+</script>
 
 <!-- Change Password -->
 <div class="row g-4 mt-4">
@@ -335,66 +375,6 @@ $pageTitle = "Profile";
                     </button>
                 </div>
             </form>
-        </div>
-    </div>
-</div>
-
-<!-- Recent Activity -->
-<div class="row g-4 mt-4">
-    <div class="col-12">
-        <div class="content-card">
-            <div class="card-header">
-                <h2 class="card-title">
-                    <i class="bi bi-clock-history me-2"></i>
-                    Recent Activity
-                </h2>
-                <p class="card-subtitle">Your latest account activities and transactions</p>
-            </div>
-            
-            <?php
-            $recentActivity = getUserRecentActivity($conn, $userId, 10);
-            ?>
-            
-            <?php if (!empty($recentActivity)): ?>
-                <div class="activity-timeline">
-                    <?php foreach ($recentActivity as $activity): ?>
-                        <div class="timeline-item">
-                            <div class="timeline-marker">
-                                <?php if ($activity['type'] === 'order'): ?>
-                                    <i class="bi bi-cart-fill"></i>
-                                <?php else: ?>
-                                    <i class="bi bi-globe"></i>
-                                <?php endif; ?>
-                            </div>
-                            <div class="timeline-content">
-                                <div class="timeline-header">
-                                    <h6 class="timeline-title">
-                                        <?php if ($activity['type'] === 'order'): ?>
-                                            Order #<?php echo htmlspecialchars($activity['title']); ?>
-                                        <?php else: ?>
-                                            Website: <?php echo htmlspecialchars($activity['title']); ?>
-                                        <?php endif; ?>
-                                    </h6>
-                                    <span class="timeline-time"><?php echo timeAgo($activity['created_at']); ?></span>
-                                </div>
-                                <div class="timeline-body">
-                                    <span class="badge bg-<?php echo $activity['status'] === 'active' ? 'success' : ($activity['status'] === 'pending' ? 'warning' : 'secondary'); ?>">
-                                        <?php echo ucfirst($activity['status']); ?>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php else: ?>
-                <div class="empty-state">
-                    <div class="empty-state-icon">
-                        <i class="bi bi-clock-history"></i>
-                    </div>
-                    <h5 class="empty-state-title">No Recent Activity</h5>
-                    <p class="empty-state-text">Your recent activities will appear here</p>
-                </div>
-            <?php endif; ?>
         </div>
     </div>
 </div>

@@ -11,13 +11,19 @@ if (!isLoggedIn()) {
     redirect('login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
 }
 
-// Get package from URL
+// Check if this is an upgrade
+$upgradeFromOrderId = isset($_GET['upgrade_from']) ? intval($_GET['upgrade_from']) : null;
+$isUpgrade = !empty($upgradeFromOrderId);
+
+// Get package from URL - support both slug and ID
 $packageSlug = isset($_GET['package']) ? sanitizeInput($_GET['package']) : '';
+$packageId = isset($_GET['package_id']) ? intval($_GET['package_id']) : 0;
 $renewOrderId = isset($_GET['renew']) ? (int)$_GET['renew'] : null;
 
-if (empty($packageSlug)) {
+// Validate package input
+if (empty($packageSlug) && empty($packageId)) {
     setFlashMessage('error', 'Invalid package selected');
-    redirect('hosting.php');
+    redirect('user/hosting.php');
 }
 
 // Get renewal order details if renewing
@@ -26,14 +32,36 @@ if ($renewOrderId) {
     $renewOrder = getOrderById($conn, $renewOrderId);
     if (!$renewOrder || $renewOrder['user_id'] != $_SESSION['user_id']) {
         setFlashMessage('error', 'Renewal order not found or access denied');
-        redirect('hosting.php');
+        redirect('user/hosting.php');
+    }
+}
+
+// Get upgrade order details if upgrading
+$upgradeOrder = null;
+if ($isUpgrade) {
+    $upgradeOrder = getOrderById($conn, $upgradeFromOrderId);
+    if (!$upgradeOrder || $upgradeOrder['user_id'] != $_SESSION['user_id']) {
+        setFlashMessage('error', 'Original order not found or access denied');
+        redirect('user/hosting.php');
     }
 }
 
 // Get package details
-// For renewals, allow deactivated packages
-if ($renewOrder) {
-    // Get package by slug without status check for renewals
+if ($packageId) {
+    // Get by ID (for upgrades)
+    $stmt = $conn->prepare("SELECT * FROM hosting_packages WHERE id = ?");
+    $stmt->bind_param("i", $packageId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $package = $result->fetch_assoc();
+    $stmt->close();
+    
+    if (!$package) {
+        setFlashMessage('error', 'Package not found');
+        redirect('user/hosting.php');
+    }
+} elseif ($renewOrder) {
+    // For renewals, allow deactivated packages
     $stmt = $conn->prepare("SELECT * FROM hosting_packages WHERE slug = ?");
     $stmt->bind_param("s", $packageSlug);
     $stmt->execute();
@@ -57,14 +85,26 @@ if ($renewOrder) {
 // Get user details
 $user = getUserById($conn, $_SESSION['user_id']);
 
-// Get billing cycle
-$billingCycle = isset($_GET['cycle']) ? $_GET['cycle'] : 'monthly';
+// Get billing cycle - support both 'cycle' and 'billing_cycle' parameters
+$billingCycle = isset($_GET['billing_cycle']) ? $_GET['billing_cycle'] : (isset($_GET['cycle']) ? $_GET['cycle'] : 'monthly');
 if (!in_array($billingCycle, ['monthly', 'yearly', '2years', '4years'])) {
     $billingCycle = 'monthly';
 }
 
 // Get package price
 $basePrice = getPackagePrice($package, $billingCycle);
+
+// Calculate upgrade pricing if this is an upgrade
+if ($isUpgrade && $upgradeOrder) {
+    require_once 'components/user_helper.php';
+    
+    // Calculate prorated upgrade price
+    $proratedAmount = calculateUpgradePrice($upgradeOrder, $package, $billingCycle);
+    $basePrice = $proratedAmount; // Use prorated amount instead of full price
+    
+    // For upgrades, no setup fee
+    $package['setup_fee'] = 0;
+}
 
 // Calculate totals
 $calculations = calculateOrderTotal(
@@ -74,11 +114,49 @@ $calculations = calculateOrderTotal(
     $package['processing_fee']
 );
 
-// Create order
-$orderId = createOrder($conn, $_SESSION['user_id'], $package['id'], $billingCycle);
-if (!$orderId) {
-    setFlashMessage('error', 'Failed to create order');
-    redirect('hosting.php');
+// Create order with correct amounts
+if ($isUpgrade && $upgradeOrder) {
+    // For upgrades, create order manually with prorated amounts
+    $orderNumber = 'ORD' . date('Ymd') . strtoupper(substr(uniqid(), -6));
+    $startDate = date('Y-m-d');
+    $expiryDate = $upgradeOrder['expiry_date']; // Keep same expiry as current plan
+    $renewalDate = $expiryDate;
+    
+    $stmt = $conn->prepare("INSERT INTO hosting_orders (
+        order_number, user_id, package_id, billing_cycle, base_price, setup_fee,
+        gst_amount, processing_fee, subtotal, total_amount,
+        start_date, expiry_date, renewal_date, upgraded_from_order_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    
+    $stmt->bind_param("siisddddddsssi",
+        $orderNumber, $_SESSION['user_id'], $package['id'], $billingCycle,
+        $calculations['base_price'], $calculations['setup_fee'],
+        $calculations['gst_amount'], $calculations['processing_fee'],
+        $calculations['subtotal'], $calculations['total_amount'],
+        $startDate, $expiryDate, $renewalDate, $upgradeFromOrderId
+    );
+    
+    $success = $stmt->execute();
+    $orderId = $conn->insert_id;
+    $stmt->close();
+    
+    if (!$orderId) {
+        setFlashMessage('error', 'Failed to create upgrade order');
+        redirect('user/hosting.php');
+    }
+    
+    // Mark the old order as upgraded
+    $stmt = $conn->prepare("UPDATE hosting_orders SET order_status = 'upgraded' WHERE id = ?");
+    $stmt->bind_param("i", $upgradeFromOrderId);
+    $stmt->execute();
+    $stmt->close();
+} else {
+    // For new orders and renewals, use the standard createOrder function
+    $orderId = createOrder($conn, $_SESSION['user_id'], $package['id'], $billingCycle);
+    if (!$orderId) {
+        setFlashMessage('error', 'Failed to create order');
+        redirect('user/hosting.php');
+    }
 }
 
 // If this is a renewal, link it to the previous order and recalculate dates
@@ -121,21 +199,23 @@ if ($renewOrderId && $renewOrder) {
     $stmt->close();
 }
 
-// Update order with calculated amounts
-$stmt = $conn->prepare("UPDATE hosting_orders SET 
-    base_price = ?, setup_fee = ?, gst_amount = ?, processing_fee = ?, subtotal = ?, total_amount = ?
-    WHERE id = ?");
-$stmt->bind_param("ddddddi",
-    $calculations['base_price'],
-    $calculations['setup_fee'],
-    $calculations['gst_amount'],
-    $calculations['processing_fee'],
-    $calculations['subtotal'],
-    $calculations['total_amount'],
-    $orderId
-);
-$stmt->execute();
-$stmt->close();
+// Update order with calculated amounts (only for renewals and new orders, upgrades already have correct amounts)
+if (!$isUpgrade) {
+    $stmt = $conn->prepare("UPDATE hosting_orders SET 
+        base_price = ?, setup_fee = ?, gst_amount = ?, processing_fee = ?, subtotal = ?, total_amount = ?
+        WHERE id = ?");
+    $stmt->bind_param("ddddddi",
+        $calculations['base_price'],
+        $calculations['setup_fee'],
+        $calculations['gst_amount'],
+        $calculations['processing_fee'],
+        $calculations['subtotal'],
+        $calculations['total_amount'],
+        $orderId
+    );
+    $stmt->execute();
+    $stmt->close();
+}
 
 // Get order details
 $order = getOrderById($conn, $orderId);
