@@ -26,14 +26,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'price_yearly' => !empty($_POST['price_yearly']) ? floatval($_POST['price_yearly']) : null,
                 'price_2years' => !empty($_POST['price_2years']) ? floatval($_POST['price_2years']) : null,
                 'price_4years' => !empty($_POST['price_4years']) ? floatval($_POST['price_4years']) : null,
+                'renewal_price_monthly' => !empty($_POST['renewal_price_monthly']) ? floatval($_POST['renewal_price_monthly']) : null,
+                'renewal_price_yearly' => !empty($_POST['renewal_price_yearly']) ? floatval($_POST['renewal_price_yearly']) : null,
+                'renewal_price_2years' => !empty($_POST['renewal_price_2years']) ? floatval($_POST['renewal_price_2years']) : null,
+                'renewal_price_4years' => !empty($_POST['renewal_price_4years']) ? floatval($_POST['renewal_price_4years']) : null,
                 'setup_fee' => floatval($_POST['setup_fee']),
                 'gst_percentage' => floatval($_POST['gst_percentage']),
                 'processing_fee' => floatval($_POST['processing_fee']),
                 'status' => $_POST['status'],
                 'is_popular' => isset($_POST['is_popular']) ? 1 : 0,
                 'is_private' => isset($_POST['is_private']) ? 1 : 0,
-                'auto_renewal_enabled' => isset($_POST['auto_renewal_enabled']) ? 1 : 0,
-                'renewal_reminder_days' => intval($_POST['renewal_reminder_days'] ?? 7),
                 'sort_order' => intval($_POST['sort_order'])
             ];
             
@@ -67,14 +69,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'price_yearly' => !empty($_POST['price_yearly']) ? floatval($_POST['price_yearly']) : null,
                 'price_2years' => !empty($_POST['price_2years']) ? floatval($_POST['price_2years']) : null,
                 'price_4years' => !empty($_POST['price_4years']) ? floatval($_POST['price_4years']) : null,
+                'renewal_price_monthly' => !empty($_POST['renewal_price_monthly']) ? floatval($_POST['renewal_price_monthly']) : null,
+                'renewal_price_yearly' => !empty($_POST['renewal_price_yearly']) ? floatval($_POST['renewal_price_yearly']) : null,
+                'renewal_price_2years' => !empty($_POST['renewal_price_2years']) ? floatval($_POST['renewal_price_2years']) : null,
+                'renewal_price_4years' => !empty($_POST['renewal_price_4years']) ? floatval($_POST['renewal_price_4years']) : null,
                 'setup_fee' => floatval($_POST['setup_fee']),
                 'gst_percentage' => floatval($_POST['gst_percentage']),
                 'processing_fee' => floatval($_POST['processing_fee']),
                 'status' => $_POST['status'],
                 'is_popular' => isset($_POST['is_popular']) ? 1 : 0,
                 'is_private' => isset($_POST['is_private']) ? 1 : 0,
-                'auto_renewal_enabled' => isset($_POST['auto_renewal_enabled']) ? 1 : 0,
-                'renewal_reminder_days' => intval($_POST['renewal_reminder_days'] ?? 7),
                 'sort_order' => intval($_POST['sort_order'])
             ];
             
@@ -215,9 +219,6 @@ include 'includes/header.php';
                                     <?php endif; ?>
                                     <?php if (isset($package['is_private']) && $package['is_private']): ?>
                                         <i class="bi bi-lock-fill text-danger" title="Private Package"></i>
-                                    <?php endif; ?>
-                                    <?php if (isset($package['auto_renewal_enabled']) && !$package['auto_renewal_enabled']): ?>
-                                        <i class="bi bi-x-circle text-secondary" title="Auto-renewal disabled"></i>
                                     <?php endif; ?>
                                     <?php echo htmlspecialchars($package['name']); ?>
                                 </div>
@@ -392,29 +393,62 @@ include 'includes/header.php';
                         </div>
                     </div>
                     
+                    <hr>
+                    <h6 class="mb-3">Renewal Pricing (₹) - Leave blank to use same price as initial</h6>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Monthly Renewal</label>
+                            <input type="number" step="0.01" class="form-control" id="renewal_price_monthly" name="renewal_price_monthly" placeholder="e.g., 549">
+                            <small class="text-muted">Renewal price/month</small>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Yearly Renewal</label>
+                            <input type="number" step="0.01" class="form-control" id="renewal_price_yearly" name="renewal_price_yearly" placeholder="e.g., 5499">
+                            <small class="text-muted">Renewal for 1 year</small>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">2 Years Renewal</label>
+                            <input type="number" step="0.01" class="form-control" id="renewal_price_2years" name="renewal_price_2years" placeholder="e.g., 9999">
+                            <small class="text-muted">Renewal for 2 years</small>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">4 Years Renewal</label>
+                            <input type="number" step="0.01" class="form-control" id="renewal_price_4years" name="renewal_price_4years" placeholder="e.g., 17999">
+                            <small class="text-muted">Renewal for 4 years</small>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    <h6 class="mb-3">Package Settings</h6>
                     <div class="row">
                         <div class="col-md-4 mb-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status" required>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" id="is_popular" name="is_popular">
+                                <label class="form-check-label" for="is_popular">Mark as Popular</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Sort Order</label>
+                            <input type="number" class="form-control" id="sort_order" name="sort_order" value="0">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="is_private" name="is_private">
                                 <label class="form-check-label" for="is_private">
-                                    <i class="bi bi-lock-fill text-danger"></i> Private Package
+                                    <i class="bi bi-lock-fill text-danger"></i> Private Package (Admin Only)
                                 </label>
                             </div>
-                            <small class="text-muted">Hide from public, admin only</small>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="auto_renewal_enabled" name="auto_renewal_enabled" checked>
-                                <label class="form-check-label" for="auto_renewal_enabled">
-                                    <i class="bi bi-arrow-repeat text-success"></i> Auto-Renewal
-                                </label>
-                            </div>
-                            <small class="text-muted">Allow automatic renewals</small>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Renewal Reminder (Days)</label>
-                            <input type="number" class="form-control" id="renewal_reminder_days" name="renewal_reminder_days" value="7" min="1" max="30">
-                            <small class="text-muted">Days before expiry</small>
+                            <small class="text-muted">Hide this package from public listing</small>
                         </div>
                     </div>
                 </form>
@@ -465,14 +499,16 @@ function editPackage(packageId) {
             document.getElementById('price_yearly').value = p.price_yearly || '';
             document.getElementById('price_2years').value = p.price_2years || '';
             document.getElementById('price_4years').value = p.price_4years || '';
+            document.getElementById('renewal_price_monthly').value = p.renewal_price_monthly || '';
+            document.getElementById('renewal_price_yearly').value = p.renewal_price_yearly || '';
+            document.getElementById('renewal_price_2years').value = p.renewal_price_2years || '';
+            document.getElementById('renewal_price_4years').value = p.renewal_price_4years || '';
             document.getElementById('setup_fee').value = p.setup_fee || 0;
             document.getElementById('gst_percentage').value = p.gst_percentage || 18;
             document.getElementById('processing_fee').value = p.processing_fee || 0;
             document.getElementById('status').value = p.status;
             document.getElementById('is_popular').checked = p.is_popular == 1;
             document.getElementById('is_private').checked = p.is_private == 1;
-            document.getElementById('auto_renewal_enabled').checked = p.auto_renewal_enabled == 1;
-            document.getElementById('renewal_reminder_days').value = p.renewal_reminder_days || 7;
             document.getElementById('sort_order').value = p.sort_order || 0;
             
             const modal = new bootstrap.Modal(document.getElementById('packageModal'));

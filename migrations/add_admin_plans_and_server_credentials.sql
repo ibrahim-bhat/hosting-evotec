@@ -12,8 +12,10 @@ ADD COLUMN `server_url` VARCHAR(255) DEFAULT 'https://server.infralabs.cloud' CO
 ALTER TABLE `hosting_packages`
 ADD COLUMN `is_admin_only` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'If 1, plan is only visible to admin',
 ADD COLUMN `is_private` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'If 1, package is hidden from public (admin only)',
-ADD COLUMN `auto_renewal_enabled` TINYINT(1) NOT NULL DEFAULT 1 COMMENT 'If 1, package supports auto-renewal',
-ADD COLUMN `renewal_reminder_days` INT NOT NULL DEFAULT 7 COMMENT 'Days before expiry to send reminder',
+ADD COLUMN `renewal_price_monthly` DECIMAL(10,2) DEFAULT NULL COMMENT 'Renewal price for monthly billing',
+ADD COLUMN `renewal_price_yearly` DECIMAL(10,2) DEFAULT NULL COMMENT 'Renewal price for yearly billing',
+ADD COLUMN `renewal_price_2years` DECIMAL(10,2) DEFAULT NULL COMMENT 'Renewal price for 2 years billing',
+ADD COLUMN `renewal_price_4years` DECIMAL(10,2) DEFAULT NULL COMMENT 'Renewal price for 4 years billing',
 ADD COLUMN `created_by_admin` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'If 1, plan was created by admin for manual assignment';
 
 -- Add assignment tracking to hosting_orders table
