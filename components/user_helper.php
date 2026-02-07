@@ -398,12 +398,9 @@ function getUpgradeOptions($conn, $currentPackageId, $billingCycle) {
     $currentPrice = $currentPackage[$priceColumn] ?? 0;
     
     // Get packages with higher price for the same billing cycle
-    // Exclude admin-only and private packages
     $stmt = $conn->prepare("
         SELECT * FROM hosting_packages 
         WHERE status = 'active' 
-        AND (is_admin_only = 0 OR is_admin_only IS NULL)
-        AND (is_private = 0 OR is_private IS NULL)
         AND id != ?
         AND $priceColumn > ?
         AND $priceColumn IS NOT NULL
