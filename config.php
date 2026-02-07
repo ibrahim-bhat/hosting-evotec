@@ -6,10 +6,10 @@ define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_NAME', 'hosting');
 } else {
-    define('DB_HOST', 'localhost');
-    define('DB_USER', 'hostingevotec');
-    define('DB_PASS', 'Ibrahimbhat123@');
-    define('DB_NAME', 'hostingevotec');
+  define('DB_HOST', 'localhost');
+    define('DB_USER', 'infralabs-cloud');
+    define('DB_PASS', 'Evotec123@');
+    define('DB_NAME', 'infralabs-cloud');
 }
 
 // Site Configuration
@@ -80,5 +80,6 @@ if ($stmt) {
 }
 define('SESSION_LIFETIME', $sessionTimeoutMinutes * 60); // Convert minutes to seconds
 ?>
+
 
 
