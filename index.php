@@ -788,10 +788,6 @@ include 'components/header.php';
                            <span class="period">/month</span>
                         </div>
                         <div class="pricing-cycle">Billed <?php echo $defaultCycle == 'monthly' ? 'Monthly' : ucfirst($defaultCycle); ?></div>
-                        <div class="renewal-info">
-                           <i class="fas fa-info-circle"></i>
-                           Renews at ₹<?php echo number_format($renewalPrice, 0); ?> + taxes
-                        </div>
                         <div style="font-size:12px; color:#9CA3AF; margin-top:4px;">
                            * Prices exclude applicable GST & fees
                         </div>
