@@ -390,7 +390,7 @@ $settings = mysqli_fetch_assoc($settingsResult);
                         <span class="value">₹<?php echo number_format($invoice['subtotal'], 2); ?></span>
                     </div>
                     <div class="total-row">
-                        <span class="label">Tax (18%)</span>
+                        <span class="label">Tax (<?php echo isset($gstPercentage) ? $gstPercentage : '18'; ?>%)</span>
                         <span class="value">₹<?php echo number_format($invoice['gst_amount'], 2); ?></span>
                     </div>
                     <?php if ($invoice['processing_fee'] > 0): ?>

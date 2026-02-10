@@ -4,6 +4,7 @@ require_once '../components/auth_helper.php';
 require_once '../components/admin_helper.php';
 require_once '../components/hosting_helper.php';
 require_once '../components/settings_helper.php';
+require_once '../components/payment_settings_helper.php';
 require_once '../components/pdf_invoice_helper.php';
 
 // Require admin or user access
@@ -43,6 +44,7 @@ $companyPhone = getSetting($conn, 'company_phone', '+91 123 456 7890');
 $companyAddress = getSetting($conn, 'company_address', '');
 $gstNumber = getSetting($conn, 'company_gst', '');
 $companyLogo = getCompanyLogo($conn);
+$gstPercentage = getGlobalGstPercentage($conn);
 
 // Calculate dates for HTML display
 $billingCycleText = ucfirst(str_replace('years', ' Years', $order['billing_cycle']));
@@ -181,7 +183,7 @@ $nextBillingDate = $order['renewal_date'] ? date('d M, Y', strtotime($order['ren
                 <span style="font-weight: bold; margin-left: 20px;">₹<?php echo number_format($order['setup_fee'], 2); ?></span>
             </div>
             <div style="margin-bottom: 10px;">
-                <span style="color: #666;">GST (18%):</span>
+                <span style="color: #666;">GST (<?php echo $gstPercentage; ?>%):</span>
                 <span style="font-weight: bold; margin-left: 20px;">₹<?php echo number_format($order['gst_amount'], 2); ?></span>
             </div>
             <div style="padding-top: 15px; border-top: 2px solid #333; margin-top: 15px; font-size: 20px;">

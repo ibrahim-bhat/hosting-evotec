@@ -704,39 +704,43 @@ include 'components/header.php';
                   // Determine available price cycles
                   $availablePrices = [];
                   if (!empty($package['price_monthly']) && $package['price_monthly'] > 0) {
+                     $renewalMonthly = !empty($package['renewal_price_monthly']) ? $package['renewal_price_monthly'] : $package['price_monthly'];
                      $availablePrices['monthly'] = [
                         'price' => $package['price_monthly'],
                         'label' => 'Monthly',
                         'perMonth' => $package['price_monthly'],
                         'totalPrice' => $package['price_monthly'],
-                        'renewal' => $package['price_monthly']
+                        'renewal' => $renewalMonthly
                      ];
                   }
                   if (!empty($package['price_yearly']) && $package['price_yearly'] > 0) {
+                     $renewalYearly = !empty($package['renewal_price_yearly']) ? $package['renewal_price_yearly'] : $package['price_yearly'];
                      $availablePrices['yearly'] = [
                         'price' => $package['price_yearly'],
                         'label' => 'Yearly',
                         'perMonth' => $package['price_yearly'] / 12,
                         'totalPrice' => $package['price_yearly'],
-                        'renewal' => $package['price_yearly']
+                        'renewal' => $renewalYearly
                      ];
                   }
                   if (!empty($package['price_2years']) && $package['price_2years'] > 0) {
+                     $renewal2y = !empty($package['renewal_price_2years']) ? $package['renewal_price_2years'] : $package['price_2years'];
                      $availablePrices['2years'] = [
                         'price' => $package['price_2years'],
                         'label' => '2 Years',
                         'perMonth' => $package['price_2years'] / 24,
                         'totalPrice' => $package['price_2years'],
-                        'renewal' => $package['price_2years']
+                        'renewal' => $renewal2y
                      ];
                   }
                   if (!empty($package['price_4years']) && $package['price_4years'] > 0) {
+                     $renewal4y = !empty($package['renewal_price_4years']) ? $package['renewal_price_4years'] : $package['price_4years'];
                      $availablePrices['4years'] = [
                         'price' => $package['price_4years'],
                         'label' => '4 Years',
                         'perMonth' => $package['price_4years'] / 48,
                         'totalPrice' => $package['price_4years'],
-                        'renewal' => $package['price_4years']
+                        'renewal' => $renewal4y
                      ];
                   }
 
@@ -786,7 +790,10 @@ include 'components/header.php';
                         <div class="pricing-cycle">Billed <?php echo $defaultCycle == 'monthly' ? 'Monthly' : ucfirst($defaultCycle); ?></div>
                         <div class="renewal-info">
                            <i class="fas fa-info-circle"></i>
-                           Renews at ₹<?php echo number_format($renewalPrice, 0); ?>
+                           Renews at ₹<?php echo number_format($renewalPrice, 0); ?> + taxes
+                        </div>
+                        <div style="font-size:12px; color:#9CA3AF; margin-top:4px;">
+                           * Prices exclude applicable GST & fees
                         </div>
                      </div>
 

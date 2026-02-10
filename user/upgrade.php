@@ -2,6 +2,7 @@
 require_once 'includes/header.php';
 require_once '../components/user_helper.php';
 require_once '../components/hosting_helper.php';
+require_once '../components/payment_settings_helper.php';
 
 $userId = $_SESSION['user_id'];
 
@@ -94,6 +95,7 @@ $pageTitle = "Upgrade Plan";
                         ?>
                     </div>
                     <div class="package-period"><?php echo ucfirst($currentBillingCycle); ?> billing</div>
+                    <div style="font-size:12px; color:#6B7280; margin-top:4px;">+ GST <?php echo getGlobalGstPercentage($conn); ?>%<?php $pf = getGlobalProcessingFee($conn); if ($pf > 0) echo ', Processing ' . $pf . '%'; ?> & applicable fees</div>
                     
                     <div class="package-features">
                         <?php 
@@ -143,7 +145,7 @@ $pageTitle = "Upgrade Plan";
     <div class="col-12">
         <div class="alert alert-info">
             <i class="bi bi-info-circle me-2"></i>
-            <strong>Note:</strong> When you upgrade, you'll be charged the difference between your current plan and the new plan, prorated for the remaining time in your billing cycle.
+            <strong>Note:</strong> When you upgrade, you'll be charged the full price of the new plan and a fresh billing period will start. GST (<?php echo getGlobalGstPercentage($conn); ?>%)<?php $pf = getGlobalProcessingFee($conn); $sf = getGlobalSetupFee($conn); if ($sf > 0) echo ', Setup Fee (' . $sf . '%)'; if ($pf > 0) echo ', Processing Fee (' . $pf . '%)'; ?> will be applied.
         </div>
     </div>
 </div>

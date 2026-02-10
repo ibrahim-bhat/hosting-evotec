@@ -30,9 +30,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'renewal_price_yearly' => !empty($_POST['renewal_price_yearly']) ? floatval($_POST['renewal_price_yearly']) : null,
                 'renewal_price_2years' => !empty($_POST['renewal_price_2years']) ? floatval($_POST['renewal_price_2years']) : null,
                 'renewal_price_4years' => !empty($_POST['renewal_price_4years']) ? floatval($_POST['renewal_price_4years']) : null,
-                'setup_fee' => floatval($_POST['setup_fee']),
-                'gst_percentage' => floatval($_POST['gst_percentage']),
-                'processing_fee' => floatval($_POST['processing_fee']),
                 'status' => $_POST['status'],
                 'is_popular' => isset($_POST['is_popular']) ? 1 : 0,
                 'is_private' => isset($_POST['is_private']) ? 1 : 0,
@@ -73,9 +70,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'renewal_price_yearly' => !empty($_POST['renewal_price_yearly']) ? floatval($_POST['renewal_price_yearly']) : null,
                 'renewal_price_2years' => !empty($_POST['renewal_price_2years']) ? floatval($_POST['renewal_price_2years']) : null,
                 'renewal_price_4years' => !empty($_POST['renewal_price_4years']) ? floatval($_POST['renewal_price_4years']) : null,
-                'setup_fee' => floatval($_POST['setup_fee']),
-                'gst_percentage' => floatval($_POST['gst_percentage']),
-                'processing_fee' => floatval($_POST['processing_fee']),
                 'status' => $_POST['status'],
                 'is_popular' => isset($_POST['is_popular']) ? 1 : 0,
                 'is_private' => isset($_POST['is_private']) ? 1 : 0,
@@ -355,21 +349,10 @@ include 'includes/header.php';
                         </div>
                     </div>
                     
-                    <hr>
-                    <h6 class="mb-3">Additional Charges</h6>
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Setup Fee (₹)</label>
-                            <input type="number" step="0.01" class="form-control" id="setup_fee" name="setup_fee" value="0">
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">GST %</label>
-                            <input type="number" step="0.01" class="form-control" id="gst_percentage" name="gst_percentage" value="18">
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Processing Fee (₹)</label>
-                            <input type="number" step="0.01" class="form-control" id="processing_fee" name="processing_fee" value="0">
-                        </div>
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <strong>Note:</strong> Setup fee, GST %, and processing fee are configured globally in 
+                        <a href="settings.php">System Settings &rarr; Payment Settings</a> and apply to all packages.
                     </div>
                     
                     <hr>
@@ -503,9 +486,6 @@ function editPackage(packageId) {
             document.getElementById('renewal_price_yearly').value = p.renewal_price_yearly || '';
             document.getElementById('renewal_price_2years').value = p.renewal_price_2years || '';
             document.getElementById('renewal_price_4years').value = p.renewal_price_4years || '';
-            document.getElementById('setup_fee').value = p.setup_fee || 0;
-            document.getElementById('gst_percentage').value = p.gst_percentage || 18;
-            document.getElementById('processing_fee').value = p.processing_fee || 0;
             document.getElementById('status').value = p.status;
             document.getElementById('is_popular').checked = p.is_popular == 1;
             document.getElementById('is_private').checked = p.is_private == 1;

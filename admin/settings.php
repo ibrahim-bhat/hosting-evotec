@@ -284,6 +284,12 @@ include 'includes/header.php';
             </div>
             <div class="settings-card-body">
                 <?php foreach ($settings['payment'] as $setting): ?>
+                    <?php 
+                    // Skip global payment settings - they have dedicated fields below
+                    if (in_array($setting['setting_key'], ['global_setup_fee', 'global_gst_percentage', 'global_processing_fee', 'currency_symbol', 'currency_code'])) {
+                        continue;
+                    }
+                    ?>
                     <div class="form-group">
                         <?php if ($setting['setting_type'] === 'boolean'): ?>
                             <div class="form-check form-switch">
@@ -332,15 +338,16 @@ include 'includes/header.php';
                 <div class="row">
                     <div class="col-md-4">
                         <div class="form-group">
-                            <label for="setting_global_setup_fee" class="form-label">Setup Fee (₹)</label>
+                            <label for="setting_global_setup_fee" class="form-label">Setup Fee (%)</label>
                             <input type="number" 
                                    class="form-control" 
                                    id="setting_global_setup_fee" 
                                    name="setting_global_setup_fee"
                                    step="0.01"
                                    min="0"
+                                   max="100"
                                    value="<?php echo htmlspecialchars(getSetting($conn, 'global_setup_fee', '0.00')); ?>">
-                            <small class="form-text text-muted">One-time setup fee applied to all orders</small>
+                            <small class="form-text text-muted">One-time setup fee % applied to new orders (calculated on base price)</small>
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -359,15 +366,16 @@ include 'includes/header.php';
                     </div>
                     <div class="col-md-4">
                         <div class="form-group">
-                            <label for="setting_global_processing_fee" class="form-label">Processing Fee (₹)</label>
+                            <label for="setting_global_processing_fee" class="form-label">Processing Fee (%)</label>
                             <input type="number" 
                                    class="form-control" 
                                    id="setting_global_processing_fee" 
                                    name="setting_global_processing_fee"
                                    step="0.01"
                                    min="0"
+                                   max="100"
                                    value="<?php echo htmlspecialchars(getSetting($conn, 'global_processing_fee', '0.00')); ?>">
-                            <small class="form-text text-muted">Processing fee applied to all orders</small>
+                            <small class="form-text text-muted">Processing fee % applied to all orders (calculated on base price)</small>
                         </div>
                     </div>
                 </div>

@@ -359,6 +359,7 @@ function isOrderExpiringSoon($expiryDate, $days = 7) {
 /**
  * Format time ago (e.g., "2 hours ago")
  */
+if (!function_exists('timeAgo')) {
 function timeAgo($timestamp) {
     $time = strtotime($timestamp);
     $diff = time() - $time;
@@ -380,6 +381,7 @@ function timeAgo($timestamp) {
     } else {
         return formatDate($timestamp);
     }
+}
 }
 
 /**

@@ -55,6 +55,14 @@ if ($status === 'success' && !empty($paymentId)) {
     
     createPaymentHistory($conn, $paymentData);
     
+    // If this order is an upgrade, mark the original order as 'upgraded'
+    if (!empty($order['upgraded_from_order_id'])) {
+        $stmt = $conn->prepare("UPDATE hosting_orders SET order_status = 'upgraded' WHERE id = ?");
+        $stmt->bind_param("i", $order['upgraded_from_order_id']);
+        $stmt->execute();
+        $stmt->close();
+    }
+    
     // Auto-cleanup: Cancel other pending orders for this user
     cancelUserPendingOrders($conn, $_SESSION['user_id'], $orderId);
     

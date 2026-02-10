@@ -3,6 +3,8 @@ session_start();
 require_once 'config.php';
 require_once 'components/auth_helper.php';
 require_once 'components/hosting_helper.php';
+require_once 'components/payment_settings_helper.php';
+require_once 'components/settings_helper.php';
 
 // Get package from URL
 $packageSlug = isset($_GET['package']) ? sanitizeInput($_GET['package']) : '';
@@ -49,26 +51,33 @@ if ($renewOrder) {
 $isLoggedIn = isLoggedIn();
 
 // Get pricing for different cycles
+$isRenewal = !empty($renewOrderId);
 $availableCycles = [];
 if (!empty($package['price_yearly']) && $package['price_yearly'] > 0) {
+    $renewalYearly = getPackageRenewalPrice($package, 'yearly');
     $availableCycles['yearly'] = [
         'price' => $package['price_yearly'] / 12,
         'label' => 'Yearly',
-        'total' => $package['price_yearly']
+        'total' => $isRenewal ? $renewalYearly : $package['price_yearly'],
+        'renewal' => $renewalYearly
     ];
 }
 if (!empty($package['price_2years']) && $package['price_2years'] > 0) {
+    $renewal2y = getPackageRenewalPrice($package, '2years');
     $availableCycles['2years'] = [
         'price' => $package['price_2years'] / 24,
         'label' => '2 Years',
-        'total' => $package['price_2years']
+        'total' => $isRenewal ? $renewal2y : $package['price_2years'],
+        'renewal' => $renewal2y
     ];
 }
 if (!empty($package['price_4years']) && $package['price_4years'] > 0) {
+    $renewal4y = getPackageRenewalPrice($package, '4years');
     $availableCycles['4years'] = [
         'price' => $package['price_4years'] / 48,
         'label' => '4 Years',
-        'total' => $package['price_4years']
+        'total' => $isRenewal ? $renewal4y : $package['price_4years'],
+        'renewal' => $renewal4y
     ];
 }
 
@@ -83,9 +92,9 @@ if (!isset($availableCycles[$billingCycle])) {
     $billingCycle = array_key_first($availableCycles);
 }
 
-// Calculate pricing
+// Calculate pricing using global settings
 $cyclePrice = $availableCycles[$billingCycle]['total'];
-$calculations = calculateOrderTotal($cyclePrice, $package['setup_fee'], $package['gst_percentage'], $package['processing_fee']);
+$calculations = calculateOrderTotal($conn, $cyclePrice, $isRenewal);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -409,13 +418,45 @@ $calculations = calculateOrderTotal($cyclePrice, $package['setup_fee'], $package
 
                 <div class="summary-divider"></div>
 
+                <!-- Fee Breakdown -->
+                <div class="summary-row">
+                    <span class="summary-label">Base Price:</span>
+                    <span class="summary-value">₹<?php echo number_format($calculations['base_price'], 2); ?></span>
+                </div>
+                <?php if ($calculations['setup_fee'] > 0): ?>
+                <div class="summary-row">
+                    <span class="summary-label">Setup Fee (<?php echo $calculations['setup_fee_percentage']; ?>%):</span>
+                    <span class="summary-value">₹<?php echo number_format($calculations['setup_fee'], 2); ?></span>
+                </div>
+                <?php endif; ?>
+                <?php if ($calculations['gst_amount'] > 0): ?>
+                <div class="summary-row">
+                    <span class="summary-label">GST (<?php echo $calculations['gst_percentage']; ?>%):</span>
+                    <span class="summary-value">₹<?php echo number_format($calculations['gst_amount'], 2); ?></span>
+                </div>
+                <?php endif; ?>
+                <?php if ($calculations['processing_fee'] > 0): ?>
+                <div class="summary-row">
+                    <span class="summary-label">Processing Fee (<?php echo $calculations['processing_fee_percentage']; ?>%):</span>
+                    <span class="summary-value">₹<?php echo number_format($calculations['processing_fee'], 2); ?></span>
+                </div>
+                <?php endif; ?>
+
+                <div class="summary-divider"></div>
+
                 <div class="price-display">
                     <div class="price-amount">₹<?php echo number_format($calculations['total_amount'], 2); ?></div>
-                    <div class="price-period">₹<?php echo number_format($availableCycles[$billingCycle]['price'], 2); ?> per month</div>
+                    <div class="price-period">Total payable amount</div>
                 </div>
 
+                <?php if (!$isRenewal && isset($availableCycles[$billingCycle]['renewal'])): ?>
+                <div style="text-align:center; font-size:13px; color:var(--text-secondary); margin-bottom:12px;">
+                    <i class="fas fa-sync-alt"></i> Renews at ₹<?php echo number_format($availableCycles[$billingCycle]['renewal'], 2); ?> + taxes
+                </div>
+                <?php endif; ?>
+
                 <div class="billing-notice">
-                    <i class="fas fa-info-circle"></i> You will be billed ₹<?php echo number_format($cyclePrice, 2); ?> for <?php echo ucfirst(str_replace('years', ' Years', $billingCycle)); ?> period
+                    <i class="fas fa-info-circle"></i> You will be billed ₹<?php echo number_format($calculations['total_amount'], 2); ?> (incl. taxes) for <?php echo ucfirst(str_replace('years', ' Years', $billingCycle)); ?> period
                 </div>
 
                 <?php if ($isLoggedIn): ?>

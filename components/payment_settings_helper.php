@@ -22,7 +22,7 @@ function getGlobalPaymentSettings($conn) {
 }
 
 /**
- * Get global setup fee
+ * Get global setup fee percentage
  */
 function getGlobalSetupFee($conn) {
     $stmt = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'global_setup_fee'");
@@ -48,7 +48,7 @@ function getGlobalGstPercentage($conn) {
 }
 
 /**
- * Get global processing fee
+ * Get global processing fee percentage
  */
 function getGlobalProcessingFee($conn) {
     $stmt = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'global_processing_fee'");
@@ -103,23 +103,35 @@ function updateGlobalPaymentSettings($conn, $settings) {
 /**
  * Calculate order total with global settings
  */
-function calculateOrderTotalWithGlobalSettings($conn, $basePrice) {
-    $setupFee = getGlobalSetupFee($conn);
+function calculateOrderTotalWithGlobalSettings($conn, $basePrice, $isRenewal = false) {
+    $setupFeePercentage = $isRenewal ? 0 : getGlobalSetupFee($conn);
     $gstPercentage = getGlobalGstPercentage($conn);
-    $processingFee = getGlobalProcessingFee($conn);
+    $processingFeePercentage = getGlobalProcessingFee($conn);
     
-    $subtotal = $basePrice + $setupFee;
+    // Calculate setup fee as percentage of base price
+    $setupFeeAmount = ($basePrice * $setupFeePercentage) / 100;
+    
+    // Calculate processing fee as percentage of base price
+    $processingFeeAmount = ($basePrice * $processingFeePercentage) / 100;
+    
+    // Subtotal = base + setup + processing (taxable value)
+    $subtotal = $basePrice + $setupFeeAmount + $processingFeeAmount;
+    
+    // GST applies on the full subtotal (all fees are part of the taxable service)
     $gstAmount = ($subtotal * $gstPercentage) / 100;
-    $total = $subtotal + $gstAmount + $processingFee;
+    
+    $total = $subtotal + $gstAmount;
     
     return [
         'base_price' => $basePrice,
-        'setup_fee' => $setupFee,
-        'subtotal' => $subtotal,
-        'gst_amount' => $gstAmount,
+        'setup_fee' => round($setupFeeAmount, 2),
+        'setup_fee_percentage' => $setupFeePercentage,
+        'subtotal' => round($subtotal, 2),
+        'gst_amount' => round($gstAmount, 2),
         'gst_percentage' => $gstPercentage,
-        'processing_fee' => $processingFee,
-        'total_amount' => $total
+        'processing_fee' => round($processingFeeAmount, 2),
+        'processing_fee_percentage' => $processingFeePercentage,
+        'total_amount' => round($total, 2)
     ];
 }
 

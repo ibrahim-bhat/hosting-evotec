@@ -2,6 +2,7 @@
 require_once 'includes/header.php';
 require_once '../components/user_helper.php';
 require_once '../components/hosting_helper.php';
+require_once '../components/payment_settings_helper.php';
 
 $userId = $_SESSION['user_id'];
 
@@ -114,12 +115,25 @@ $pageTitle = "Renew or Upgrade - Order #" . htmlspecialchars($order['order_numbe
                 
                 <div class="package-price">
                     <?php
-                    // Get available prices
+                    // Show renewal prices for current package, regular prices for upgrades
+                    $isCurrentPkg = ($package['id'] == $order['package_id']);
                     $prices = [];
-                    if ($package['price_monthly'] > 0) $prices[] = formatCurrency($package['price_monthly']) . '/mo';
-                    if ($package['price_yearly'] > 0) $prices[] = formatCurrency($package['price_yearly']) . '/yr';
-                    if ($package['price_2years'] > 0) $prices[] = formatCurrency($package['price_2years']) . '/2yr';
-                    if ($package['price_4years'] > 0) $prices[] = formatCurrency($package['price_4years']) . '/4yr';
+                    if ($package['price_monthly'] > 0) {
+                        $rp = $isCurrentPkg ? getPackageRenewalPrice($package, 'monthly') : $package['price_monthly'];
+                        $prices[] = formatCurrency($rp) . '/mo';
+                    }
+                    if ($package['price_yearly'] > 0) {
+                        $rp = $isCurrentPkg ? getPackageRenewalPrice($package, 'yearly') : $package['price_yearly'];
+                        $prices[] = formatCurrency($rp) . '/yr';
+                    }
+                    if ($package['price_2years'] > 0) {
+                        $rp = $isCurrentPkg ? getPackageRenewalPrice($package, '2years') : $package['price_2years'];
+                        $prices[] = formatCurrency($rp) . '/2yr';
+                    }
+                    if ($package['price_4years'] > 0) {
+                        $rp = $isCurrentPkg ? getPackageRenewalPrice($package, '4years') : $package['price_4years'];
+                        $prices[] = formatCurrency($rp) . '/4yr';
+                    }
                     
                     if (!empty($prices)) {
                         echo 'Starting from<br>' . $prices[0];
@@ -127,6 +141,7 @@ $pageTitle = "Renew or Upgrade - Order #" . htmlspecialchars($order['order_numbe
                         echo 'Contact for pricing';
                     }
                     ?>
+                    <div style="font-size:12px; color:#6B7280; margin-top:4px;">+ applicable taxes</div>
                 </div>
                 
                 <!-- Features -->
@@ -160,25 +175,50 @@ $pageTitle = "Renew or Upgrade - Order #" . htmlspecialchars($order['order_numbe
                 <div class="billing-cycle-selector mt-4">
                     <label class="form-label"><strong>Select Billing Cycle:</strong></label>
                     <select class="form-select" id="cycle-<?php echo $package['id']; ?>">
-                        <?php if ($package['price_monthly'] > 0): ?>
-                            <option value="monthly">Monthly - <?php echo formatCurrency($package['price_monthly']); ?></option>
+                        <?php 
+                        $isCurrentPkg = ($package['id'] == $order['package_id']);
+                        if ($package['price_monthly'] > 0): 
+                            $rpMonthly = $isCurrentPkg ? getPackageRenewalPrice($package, 'monthly') : $package['price_monthly'];
+                        ?>
+                            <option value="monthly">Monthly - <?php echo formatCurrency($rpMonthly); ?> + taxes</option>
                         <?php endif; ?>
-                        <?php if ($package['price_yearly'] > 0): ?>
+                        <?php if ($package['price_yearly'] > 0): 
+                            $rpYearly = $isCurrentPkg ? getPackageRenewalPrice($package, 'yearly') : $package['price_yearly'];
+                        ?>
                             <option value="yearly" <?php echo $order['billing_cycle'] == 'yearly' ? 'selected' : ''; ?>>
-                                Yearly - <?php echo formatCurrency($package['price_yearly']); ?>
+                                Yearly - <?php echo formatCurrency($rpYearly); ?> + taxes
                             </option>
                         <?php endif; ?>
-                        <?php if ($package['price_2years'] > 0): ?>
+                        <?php if ($package['price_2years'] > 0): 
+                            $rp2y = $isCurrentPkg ? getPackageRenewalPrice($package, '2years') : $package['price_2years'];
+                        ?>
                             <option value="2years" <?php echo $order['billing_cycle'] == '2years' ? 'selected' : ''; ?>>
-                                2 Years - <?php echo formatCurrency($package['price_2years']); ?>
+                                2 Years - <?php echo formatCurrency($rp2y); ?> + taxes
                             </option>
                         <?php endif; ?>
-                        <?php if ($package['price_4years'] > 0): ?>
+                        <?php if ($package['price_4years'] > 0): 
+                            $rp4y = $isCurrentPkg ? getPackageRenewalPrice($package, '4years') : $package['price_4years'];
+                        ?>
                             <option value="4years" <?php echo $order['billing_cycle'] == '4years' ? 'selected' : ''; ?>>
-                                4 Years - <?php echo formatCurrency($package['price_4years']); ?>
+                                4 Years - <?php echo formatCurrency($rp4y); ?> + taxes
                             </option>
                         <?php endif; ?>
                     </select>
+                    <?php 
+                    $gstPct = getGlobalGstPercentage($conn);
+                    $setupFeePct = getGlobalSetupFee($conn);
+                    $processingFeePct = getGlobalProcessingFee($conn);
+                    ?>
+                    <small class="text-muted d-block mt-1">
+                        <i class="bi bi-info-circle"></i>
+                        GST <?php echo $gstPct; ?>% applicable on all plans.
+                        <?php if ($setupFeePct > 0 && !$isCurrentPkg): ?>
+                            Setup fee: <?php echo $setupFeePct; ?>% (one-time, new plans only).
+                        <?php endif; ?>
+                        <?php if ($processingFeePct > 0): ?>
+                            Processing fee: <?php echo $processingFeePct; ?>%.
+                        <?php endif; ?>
+                    </small>
                 </div>
                 
                 <button onclick="selectPackage('<?php echo $package['slug']; ?>', <?php echo $package['id']; ?>, <?php echo $orderId; ?>)" 

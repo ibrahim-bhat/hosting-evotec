@@ -4,10 +4,10 @@ require_once '../components/user_helper.php';
 
 $userId = $_SESSION['user_id'];
 
-// Auto-cleanup: Remove pending orders older than 30 minutes
-$cutoffTime = date('Y-m-d H:i:s', strtotime('-30 minutes'));
-$stmt = $conn->prepare("DELETE FROM hosting_orders WHERE user_id = ? AND payment_status = 'pending' AND created_at < ?");
-$stmt->bind_param("is", $userId, $cutoffTime);
+// Auto-cleanup: Remove ALL pending orders for this user
+// (pending orders are only valid while user is on checkout page)
+$stmt = $conn->prepare("DELETE FROM hosting_orders WHERE user_id = ? AND payment_status = 'pending' AND order_status = 'pending'");
+$stmt->bind_param("i", $userId);
 $stmt->execute();
 $stmt->close();
 
@@ -115,7 +115,7 @@ $pageTitle = "My Hosting";
                     
                     <div class="d-flex gap-2">
                         <?php if ($order['payment_status'] === 'pending'): ?>
-                            <a href="../payment-handler.php?order_id=<?php echo $order['id']; ?>" class="btn btn-primary flex-fill">
+                            <a href="../checkout.php?package_id=<?php echo $order['package_id']; ?>&billing_cycle=<?php echo urlencode($order['billing_cycle']); ?>" class="btn btn-primary flex-fill">
                                 <i class="bi bi-credit-card me-1"></i>
                                 Pay Now
                             </a>

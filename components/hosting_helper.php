@@ -93,14 +93,14 @@ function createPackage($conn, $data) {
     $stmt = $conn->prepare("INSERT INTO hosting_packages (
         name, slug, description, short_description, features,
         price_monthly, price_yearly, price_2years, price_4years,
-        setup_fee, gst_percentage, processing_fee, 
+        renewal_price_monthly, renewal_price_yearly, renewal_price_2years, renewal_price_4years,
         status, is_popular, sort_order
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     
-    $stmt->bind_param("sssssdddddddssi",
+    $stmt->bind_param("sssssddddddddssi",
         $data['name'], $data['slug'], $data['description'], $data['short_description'], $data['features'],
         $data['price_monthly'], $data['price_yearly'], $data['price_2years'], $data['price_4years'],
-        $data['setup_fee'], $data['gst_percentage'], $data['processing_fee'],
+        $data['renewal_price_monthly'], $data['renewal_price_yearly'], $data['renewal_price_2years'], $data['renewal_price_4years'],
         $data['status'], $data['is_popular'], $data['sort_order']
     );
     
@@ -116,14 +116,14 @@ function updatePackage($conn, $packageId, $data) {
     $stmt = $conn->prepare("UPDATE hosting_packages SET 
         name = ?, slug = ?, description = ?, short_description = ?, features = ?,
         price_monthly = ?, price_yearly = ?, price_2years = ?, price_4years = ?,
-        setup_fee = ?, gst_percentage = ?, processing_fee = ?,
+        renewal_price_monthly = ?, renewal_price_yearly = ?, renewal_price_2years = ?, renewal_price_4years = ?,
         status = ?, is_popular = ?, sort_order = ?
         WHERE id = ?");
     
-    $stmt->bind_param("sssssdddddddssii",
+    $stmt->bind_param("sssssddddddddssii",
         $data['name'], $data['slug'], $data['description'], $data['short_description'], $data['features'],
         $data['price_monthly'], $data['price_yearly'], $data['price_2years'], $data['price_4years'],
-        $data['setup_fee'], $data['gst_percentage'], $data['processing_fee'],
+        $data['renewal_price_monthly'], $data['renewal_price_yearly'], $data['renewal_price_2years'], $data['renewal_price_4years'],
         $data['status'], $data['is_popular'], $data['sort_order'],
         $packageId
     );
@@ -186,38 +186,22 @@ function getPackagePrice($package, $billingCycle) {
 /**
  * Calculate order total with taxes and fees (using global settings or legacy parameters)
  */
-function calculateOrderTotal(...$args) {
+function calculateOrderTotal($conn, $basePrice, $isRenewal = false) {
     require_once __DIR__ . '/payment_settings_helper.php';
-    
-    // Handle both old (4 params) and new (2 params) signatures for backward compatibility
-    if (count($args) === 4) {
-        // Legacy signature: calculateOrderTotal($basePrice, $setupFee, $gstPercentage, $processingFee)
-        return calculateOrderTotalLegacy($args[0], $args[1], $args[2], $args[3]);
-    } else if (count($args) === 2) {
-        // New signature: calculateOrderTotal($conn, $basePrice)
-        return calculateOrderTotalWithGlobalSettings($args[0], $args[1]);
-    }
-    
-    // Default to legacy if called with wrong number of params
-    return ['total_amount' => 0, 'base_price' => 0, 'setup_fee' => 0, 'gst_amount' => 0, 'processing_fee' => 0, 'subtotal' => 0];
+    return calculateOrderTotalWithGlobalSettings($conn, $basePrice, $isRenewal);
 }
 
 /**
- * Calculate order total with taxes and fees (legacy function for backward compatibility)
+ * Get renewal price for a package based on billing cycle.
+ * Falls back to regular price if no renewal price is set.
  */
-function calculateOrderTotalLegacy($basePrice, $setupFee, $gstPercentage, $processingFee) {
-    $subtotal = round($basePrice + $setupFee, 2);
-    $gstAmount = round(($subtotal * $gstPercentage) / 100, 2);
-    $total = round($subtotal + $gstAmount + $processingFee, 2);
-    
-    return [
-        'base_price' => round($basePrice, 2),
-        'setup_fee' => round($setupFee, 2),
-        'subtotal' => $subtotal,
-        'gst_amount' => $gstAmount,
-        'processing_fee' => round($processingFee, 2),
-        'total_amount' => $total
-    ];
+function getPackageRenewalPrice($package, $billingCycle) {
+    $renewalKey = 'renewal_price_' . $billingCycle;
+    if (!empty($package[$renewalKey]) && $package[$renewalKey] > 0) {
+        return $package[$renewalKey];
+    }
+    // Fall back to regular price
+    return getPackagePrice($package, $billingCycle);
 }
 
 // ========== ORDERS MANAGEMENT ==========

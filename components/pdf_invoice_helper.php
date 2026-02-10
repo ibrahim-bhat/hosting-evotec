@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/settings_helper.php';
+require_once __DIR__ . '/payment_settings_helper.php';
 
 /**
  * Generate PDF invoice for hosting order
@@ -47,7 +48,7 @@ function generateOrderPDFInvoice($conn, $orderId, $download = true) {
                 'setup_fee' => $order['setup_fee'],
                 'subtotal' => $order['subtotal'],
                 'gst_amount' => $order['gst_amount'],
-                'gst_percentage' => 18, // You can get this from global settings
+                'gst_percentage' => getGlobalGstPercentage($conn),
                 'processing_fee' => $order['processing_fee'],
                 'total' => $order['total_amount']
             ]
@@ -592,7 +593,7 @@ function generateInvoiceHTML($invoiceData) {
                     </tr>
                     <?php if ($totalGst > 0): ?>
                         <tr>
-                            <td class="total-label">GST (18%):</td>
+                            <td class="total-label">GST (<?php echo $items[0]['gst_percentage'] ?? '18'; ?>%):</td>
                             <td class="total-value"><?php echo $currency . number_format($totalGst, 2); ?></td>
                         </tr>
                     <?php endif; ?>

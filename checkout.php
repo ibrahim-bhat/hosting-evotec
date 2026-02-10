@@ -3,7 +3,9 @@ require_once 'config.php';
 require_once 'components/auth_helper.php';
 require_once 'components/hosting_helper.php';
 require_once 'components/settings_helper.php';
+require_once 'components/payment_settings_helper.php';
 require_once 'components/flash_message.php';
+require_once 'components/cleanup_helper.php';
 
 // Check if user is logged in
 if (!isLoggedIn()) {
@@ -91,35 +93,28 @@ if (!in_array($billingCycle, ['monthly', 'yearly', '2years', '4years'])) {
     $billingCycle = 'monthly';
 }
 
-// Get package price
-$basePrice = getPackagePrice($package, $billingCycle);
+// Get package price - for upgrades, charge the FULL new package price (not prorated)
+$isRenewal = !empty($renewOrderId);
+$basePrice = $isRenewal ? getPackageRenewalPrice($package, $billingCycle) : getPackagePrice($package, $billingCycle);
 
-// Calculate upgrade pricing if this is an upgrade
-if ($isUpgrade && $upgradeOrder) {
-    require_once 'components/user_helper.php';
-    
-    // Calculate prorated upgrade price
-    $proratedAmount = calculateUpgradePrice($upgradeOrder, $package, $billingCycle);
-    $basePrice = $proratedAmount; // Use prorated amount instead of full price
-    
-    // For upgrades, no setup fee
-    $package['setup_fee'] = 0;
-}
+// Upgrades use the full new package price (no proration)
+// No setup fee on renewals or upgrades
+$calculations = calculateOrderTotal($conn, $basePrice, $isRenewal || $isUpgrade);
 
-// Calculate totals
-$calculations = calculateOrderTotal(
-    $basePrice,
-    $package['setup_fee'],
-    $package['gst_percentage'],
-    $package['processing_fee']
-);
+// Auto-cleanup: Cancel ALL previous pending orders for this user before creating a new one
+cancelUserPendingOrders($conn, $_SESSION['user_id']);
 
 // Create order with correct amounts
 if ($isUpgrade && $upgradeOrder) {
-    // For upgrades, create order manually with prorated amounts
+    // For upgrades, create a fresh order for the new package with a new billing period
     $orderNumber = 'ORD' . date('Ymd') . strtoupper(substr(uniqid(), -6));
     $startDate = date('Y-m-d');
-    $expiryDate = $upgradeOrder['expiry_date']; // Keep same expiry as current plan
+    
+    // Calculate new expiry date based on billing cycle (fresh period)
+    $expiryDate = date('Y-m-d', strtotime($startDate . ' +' . 
+        ($billingCycle === 'monthly' ? '1 month' : 
+        ($billingCycle === 'yearly' ? '1 year' : 
+        ($billingCycle === '2years' ? '2 years' : '4 years')))));
     $renewalDate = $expiryDate;
     
     $stmt = $conn->prepare("INSERT INTO hosting_orders (
@@ -145,11 +140,8 @@ if ($isUpgrade && $upgradeOrder) {
         redirect('user/hosting.php');
     }
     
-    // Mark the old order as upgraded
-    $stmt = $conn->prepare("UPDATE hosting_orders SET order_status = 'upgraded' WHERE id = ?");
-    $stmt->bind_param("i", $upgradeFromOrderId);
-    $stmt->execute();
-    $stmt->close();
+    // NOTE: Do NOT mark old order as 'upgraded' here.
+    // It will be marked as 'upgraded' in payment-handler.php after successful payment.
 } else {
     // For new orders and renewals, use the standard createOrder function
     $orderId = createOrder($conn, $_SESSION['user_id'], $package['id'], $billingCycle);
@@ -356,21 +348,21 @@ $companyLogo = getCompanyLogo($conn);
                     
                     <?php if ($calculations['setup_fee'] > 0): ?>
                     <div class="summary-item">
-                        <span>Setup Fee</span>
+                        <span>Setup Fee (<?php echo $calculations['setup_fee_percentage']; ?>%)</span>
                         <span>₹<?php echo number_format($calculations['setup_fee'], 2); ?></span>
                     </div>
                     <?php endif; ?>
                     
                     <?php if ($calculations['gst_amount'] > 0): ?>
                     <div class="summary-item">
-                        <span>GST (<?php echo $package['gst_percentage']; ?>%)</span>
+                        <span>GST (<?php echo $calculations['gst_percentage']; ?>%)</span>
                         <span>₹<?php echo number_format($calculations['gst_amount'], 2); ?></span>
                     </div>
                     <?php endif; ?>
                     
                     <?php if ($calculations['processing_fee'] > 0): ?>
                     <div class="summary-item">
-                        <span>Processing Fee</span>
+                        <span>Processing Fee (<?php echo $calculations['processing_fee_percentage']; ?>%)</span>
                         <span>₹<?php echo number_format($calculations['processing_fee'], 2); ?></span>
                     </div>
                     <?php endif; ?>
@@ -436,8 +428,8 @@ $companyLogo = getCompanyLogo($conn);
             },
             "modal": {
                 "ondismiss": function() {
-                    // Payment cancelled
-                    window.location.href = 'hosting.php';
+                    // Payment cancelled - redirect to hosting
+                    window.location.href = 'user/hosting.php';
                 }
             }
         };
