@@ -93,14 +93,12 @@ function createPackage($conn, $data) {
     $stmt = $conn->prepare("INSERT INTO hosting_packages (
         name, slug, description, short_description, features,
         price_monthly, price_yearly, price_2years, price_4years,
-        renewal_price_monthly, renewal_price_yearly, renewal_price_2years, renewal_price_4years,
         status, is_popular, sort_order
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     
-    $stmt->bind_param("sssssddddddddssi",
+    $stmt->bind_param("sssssddddsii",
         $data['name'], $data['slug'], $data['description'], $data['short_description'], $data['features'],
         $data['price_monthly'], $data['price_yearly'], $data['price_2years'], $data['price_4years'],
-        $data['renewal_price_monthly'], $data['renewal_price_yearly'], $data['renewal_price_2years'], $data['renewal_price_4years'],
         $data['status'], $data['is_popular'], $data['sort_order']
     );
     
@@ -116,14 +114,12 @@ function updatePackage($conn, $packageId, $data) {
     $stmt = $conn->prepare("UPDATE hosting_packages SET 
         name = ?, slug = ?, description = ?, short_description = ?, features = ?,
         price_monthly = ?, price_yearly = ?, price_2years = ?, price_4years = ?,
-        renewal_price_monthly = ?, renewal_price_yearly = ?, renewal_price_2years = ?, renewal_price_4years = ?,
         status = ?, is_popular = ?, sort_order = ?
         WHERE id = ?");
     
-    $stmt->bind_param("sssssddddddddssii",
+    $stmt->bind_param("sssssddddsiii",
         $data['name'], $data['slug'], $data['description'], $data['short_description'], $data['features'],
         $data['price_monthly'], $data['price_yearly'], $data['price_2years'], $data['price_4years'],
-        $data['renewal_price_monthly'], $data['renewal_price_yearly'], $data['renewal_price_2years'], $data['renewal_price_4years'],
         $data['status'], $data['is_popular'], $data['sort_order'],
         $packageId
     );
@@ -192,16 +188,39 @@ function calculateOrderTotal($conn, $basePrice, $isRenewal = false) {
 }
 
 /**
- * Get renewal price for a package based on billing cycle.
- * Falls back to regular price if no renewal price is set.
+ * Get the global renewal markup percentage from settings.
  */
-function getPackageRenewalPrice($package, $billingCycle) {
-    $renewalKey = 'renewal_price_' . $billingCycle;
-    if (!empty($package[$renewalKey]) && $package[$renewalKey] > 0) {
-        return $package[$renewalKey];
+function getRenewalMarkupPercentage($conn) {
+    require_once __DIR__ . '/payment_settings_helper.php';
+    $stmt = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'renewal_markup_percentage'");
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $stmt->close();
+    return $row ? floatval($row['setting_value']) : 0;
+}
+
+/**
+ * Get renewal price for a package based on billing cycle.
+ * Uses the universal renewal markup percentage from global settings.
+ * Renewal price = base_price + (base_price * markup_percentage / 100)
+ */
+function getPackageRenewalPrice($package, $billingCycle, $conn = null) {
+    $basePrice = getPackagePrice($package, $billingCycle);
+    
+    if ($conn) {
+        $markupPercentage = getRenewalMarkupPercentage($conn);
+    } else {
+        // Fallback: try global $conn
+        global $conn;
+        $markupPercentage = $conn ? getRenewalMarkupPercentage($conn) : 0;
     }
-    // Fall back to regular price
-    return getPackagePrice($package, $billingCycle);
+    
+    if ($markupPercentage > 0) {
+        return $basePrice + ($basePrice * $markupPercentage / 100);
+    }
+    
+    return $basePrice;
 }
 
 // ========== ORDERS MANAGEMENT ==========
@@ -809,13 +828,13 @@ function updatePaymentHistoryStatus($conn, $paymentId, $status, $razorpayPayment
 /**
  * Create renewal record
  */
-function createRenewalHistory($conn, $orderId, $userId, $billingCycle, $amount, $expiryDate) {
+function createRenewalHistory($conn, $orderId, $userId, $previousOrderId, $billingCycle, $amount, $expiryDate) {
     $stmt = $conn->prepare("INSERT INTO renewal_history (
         order_id, user_id, previous_order_id, renewal_amount, billing_cycle,
         payment_status, renewal_date, expiry_date, auto_renewal
     ) VALUES (?, ?, ?, ?, ?, 'pending', CURDATE(), ?, 0)");
     
-    $stmt->bind_param("iiids", $orderId, $userId, $previousOrderId, $amount, $billingCycle, $expiryDate);
+    $stmt->bind_param("iiidss", $orderId, $userId, $previousOrderId, $amount, $billingCycle, $expiryDate);
     $success = $stmt->execute();
     $renewalId = $conn->insert_id;
     $stmt->close();

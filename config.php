@@ -1,4 +1,9 @@
 <?php
+// Composer autoload
+if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+}
+
 // Database Configuration
 if ($_SERVER['SERVER_NAME'] == 'localhost') {
 define('DB_HOST', 'localhost');
@@ -53,6 +58,9 @@ define('RAZORPAY_CURRENCY', 'INR');
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+// Load shared utilities
+require_once __DIR__ . '/components/utils.php';
 
 // Database Connection
 try {

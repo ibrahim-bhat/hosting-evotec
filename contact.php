@@ -75,16 +75,7 @@ include 'components/header.php';
                     </div>
                     <h3>24/7 Support</h3>
                     <p>Our support team is available around the clock to assist you with any questions or issues.</p>
-                    <a href="mailto:support@infralabs.cloud" class="contact-link">support@infralabs.cloud</a>
-                </div>
-
-                <div class="contact-info-card">
-                    <div class="contact-icon">
-                        <i class="fas fa-envelope"></i>
-                    </div>
-                    <h3>Sales Inquiries</h3>
-                    <p>Interested in our hosting solutions? Our sales team is ready to help you find the perfect plan.</p>
-                    <a href="mailto:sales@infralabs.cloud" class="contact-link">sales@infralabs.cloud</a>
+                    <a href="mailto:hi@infralabs.in" class="contact-link">hi@infralabs.in</a>
                 </div>
 
                 <div class="contact-info-card">

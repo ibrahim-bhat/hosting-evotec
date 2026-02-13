@@ -6,6 +6,7 @@ require_once 'components/settings_helper.php';
 require_once 'components/payment_settings_helper.php';
 require_once 'components/flash_message.php';
 require_once 'components/cleanup_helper.php';
+require_once 'components/coupon_helper.php';
 
 // Check if user is logged in
 if (!isLoggedIn()) {
@@ -209,8 +210,29 @@ if (!$isUpgrade) {
     $stmt->close();
 }
 
-// Get order details
+// Apply coupon if passed from select-package page
+$appliedDiscount = 0;
+$appliedCouponCode = '';
+$couponCode = isset($_GET['coupon']) ? trim($_GET['coupon']) : '';
+
+if (!empty($couponCode) && isLoggedIn()) {
+    $couponResult = validateCoupon($conn, $couponCode, $_SESSION['user_id'], $calculations['total_amount']);
+    if ($couponResult['valid']) {
+        $appliedDiscount = $couponResult['discount'];
+        $appliedCouponCode = $couponResult['coupon']['code'];
+        $couponId = $couponResult['coupon']['id'];
+        $discountedTotal = max(0, $calculations['total_amount'] - $appliedDiscount);
+
+        $stmt = $conn->prepare("UPDATE hosting_orders SET coupon_id = ?, discount_amount = ?, total_amount = ? WHERE id = ?");
+        $stmt->bind_param("iddi", $couponId, $appliedDiscount, $discountedTotal, $orderId);
+        $stmt->execute();
+        $stmt->close();
+    }
+}
+
+// Get order details (after coupon applied)
 $order = getOrderById($conn, $orderId);
+$finalTotal = (float)$order['total_amount'];
 
 // Razorpay Configuration (for frontend)
 $razorpayKeyId = getSetting($conn, 'razorpay_key_id', 'YOUR_RAZORPAY_KEY_ID');
@@ -367,9 +389,16 @@ $companyLogo = getCompanyLogo($conn);
                     </div>
                     <?php endif; ?>
                     
+                    <?php if (!empty($appliedDiscount) && $appliedDiscount > 0): ?>
+                    <div class="summary-item" style="color:#10B981;">
+                        <span>Coupon Discount (<?php echo htmlspecialchars($appliedCouponCode); ?>)</span>
+                        <span>-₹<?php echo number_format($appliedDiscount, 2); ?></span>
+                    </div>
+                    <?php endif; ?>
+                    
                     <div class="summary-item summary-total">
                         <span>Total Amount</span>
-                        <span>₹<?php echo number_format($calculations['total_amount'], 2); ?></span>
+                        <span>₹<?php echo number_format($finalTotal, 2); ?></span>
                     </div>
                 </div>
                 
@@ -389,7 +418,7 @@ $companyLogo = getCompanyLogo($conn);
     <script>
         var options = {
             "key": "<?php echo htmlspecialchars($razorpayKeyId); ?>",
-            "amount": "<?php echo $calculations['total_amount'] * 100; ?>",
+            "amount": "<?php echo $finalTotal * 100; ?>",
             "currency": "INR",
             "name": "<?php echo getCompanyName($conn); ?>",
             "description": "<?php echo htmlspecialchars($package['name']); ?> - <?php echo ucfirst($billingCycle); ?> Plan",

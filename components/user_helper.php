@@ -356,33 +356,8 @@ function isOrderExpiringSoon($expiryDate, $days = 7) {
     return getDaysUntilExpiry($expiryDate) <= $days;
 }
 
-/**
- * Format time ago (e.g., "2 hours ago")
- */
-if (!function_exists('timeAgo')) {
-function timeAgo($timestamp) {
-    $time = strtotime($timestamp);
-    $diff = time() - $time;
-    
-    if ($diff < 60) {
-        return 'Just now';
-    } elseif ($diff < 3600) {
-        $mins = floor($diff / 60);
-        return $mins . ' minute' . ($mins > 1 ? 's' : '') . ' ago';
-    } elseif ($diff < 86400) {
-        $hours = floor($diff / 3600);
-        return $hours . ' hour' . ($hours > 1 ? 's' : '') . ' ago';
-    } elseif ($diff < 604800) {
-        $days = floor($diff / 86400);
-        return $days . ' day' . ($days > 1 ? 's' : '') . ' ago';
-    } elseif ($diff < 2592000) {
-        $weeks = floor($diff / 604800);
-        return $weeks . ' week' . ($weeks > 1 ? 's' : '') . ' ago';
-    } else {
-        return formatDate($timestamp);
-    }
-}
-}
+// timeAgo is provided by components/utils.php
+require_once __DIR__ . '/utils.php';
 
 /**
  * Get upgrade options for a package

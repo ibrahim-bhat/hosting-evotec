@@ -11,6 +11,11 @@ if (isLoggedIn()) {
 
 // Process registration form
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
+        setFlashMessage('error', 'Invalid form submission. Please try again.');
+        redirect('register.php');
+    }
+    
     $name = sanitizeInput($_POST['name']);
     $email = sanitizeInput($_POST['email']);
     $phone = sanitizeInput($_POST['phone']);
@@ -295,6 +300,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php displayFlashMessage(); ?>
 
             <form action="" method="POST">
+                <?php echo csrfField(); ?>
                 <div class="form-group">
                     <label for="name" class="form-label">Full name</label>
                     <input type="text" 

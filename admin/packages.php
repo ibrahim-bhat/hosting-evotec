@@ -26,10 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'price_yearly' => !empty($_POST['price_yearly']) ? floatval($_POST['price_yearly']) : null,
                 'price_2years' => !empty($_POST['price_2years']) ? floatval($_POST['price_2years']) : null,
                 'price_4years' => !empty($_POST['price_4years']) ? floatval($_POST['price_4years']) : null,
-                'renewal_price_monthly' => !empty($_POST['renewal_price_monthly']) ? floatval($_POST['renewal_price_monthly']) : null,
-                'renewal_price_yearly' => !empty($_POST['renewal_price_yearly']) ? floatval($_POST['renewal_price_yearly']) : null,
-                'renewal_price_2years' => !empty($_POST['renewal_price_2years']) ? floatval($_POST['renewal_price_2years']) : null,
-                'renewal_price_4years' => !empty($_POST['renewal_price_4years']) ? floatval($_POST['renewal_price_4years']) : null,
                 'status' => $_POST['status'],
                 'is_popular' => isset($_POST['is_popular']) ? 1 : 0,
                 'is_private' => isset($_POST['is_private']) ? 1 : 0,
@@ -66,10 +62,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'price_yearly' => !empty($_POST['price_yearly']) ? floatval($_POST['price_yearly']) : null,
                 'price_2years' => !empty($_POST['price_2years']) ? floatval($_POST['price_2years']) : null,
                 'price_4years' => !empty($_POST['price_4years']) ? floatval($_POST['price_4years']) : null,
-                'renewal_price_monthly' => !empty($_POST['renewal_price_monthly']) ? floatval($_POST['renewal_price_monthly']) : null,
-                'renewal_price_yearly' => !empty($_POST['renewal_price_yearly']) ? floatval($_POST['renewal_price_yearly']) : null,
-                'renewal_price_2years' => !empty($_POST['renewal_price_2years']) ? floatval($_POST['renewal_price_2years']) : null,
-                'renewal_price_4years' => !empty($_POST['renewal_price_4years']) ? floatval($_POST['renewal_price_4years']) : null,
                 'status' => $_POST['status'],
                 'is_popular' => isset($_POST['is_popular']) ? 1 : 0,
                 'is_private' => isset($_POST['is_private']) ? 1 : 0,
@@ -356,52 +348,6 @@ include 'includes/header.php';
                     </div>
                     
                     <hr>
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Status</label>
-                            <select class="form-select" id="status" name="status" required>
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="form-check form-switch mt-4">
-                                <input class="form-check-input" type="checkbox" id="is_popular" name="is_popular">
-                                <label class="form-check-label" for="is_popular">Mark as Popular</label>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Sort Order</label>
-                            <input type="number" class="form-control" id="sort_order" name="sort_order" value="0">
-                        </div>
-                    </div>
-                    
-                    <hr>
-                    <h6 class="mb-3">Renewal Pricing (₹) - Leave blank to use same price as initial</h6>
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Monthly Renewal</label>
-                            <input type="number" step="0.01" class="form-control" id="renewal_price_monthly" name="renewal_price_monthly" placeholder="e.g., 549">
-                            <small class="text-muted">Renewal price/month</small>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Yearly Renewal</label>
-                            <input type="number" step="0.01" class="form-control" id="renewal_price_yearly" name="renewal_price_yearly" placeholder="e.g., 5499">
-                            <small class="text-muted">Renewal for 1 year</small>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">2 Years Renewal</label>
-                            <input type="number" step="0.01" class="form-control" id="renewal_price_2years" name="renewal_price_2years" placeholder="e.g., 9999">
-                            <small class="text-muted">Renewal for 2 years</small>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">4 Years Renewal</label>
-                            <input type="number" step="0.01" class="form-control" id="renewal_price_4years" name="renewal_price_4years" placeholder="e.g., 17999">
-                            <small class="text-muted">Renewal for 4 years</small>
-                        </div>
-                    </div>
-                    
-                    <hr>
                     <h6 class="mb-3">Package Settings</h6>
                     <div class="row">
                         <div class="col-md-4 mb-3">
@@ -482,10 +428,6 @@ function editPackage(packageId) {
             document.getElementById('price_yearly').value = p.price_yearly || '';
             document.getElementById('price_2years').value = p.price_2years || '';
             document.getElementById('price_4years').value = p.price_4years || '';
-            document.getElementById('renewal_price_monthly').value = p.renewal_price_monthly || '';
-            document.getElementById('renewal_price_yearly').value = p.renewal_price_yearly || '';
-            document.getElementById('renewal_price_2years').value = p.renewal_price_2years || '';
-            document.getElementById('renewal_price_4years').value = p.renewal_price_4years || '';
             document.getElementById('status').value = p.status;
             document.getElementById('is_popular').checked = p.is_popular == 1;
             document.getElementById('is_private').checked = p.is_private == 1;

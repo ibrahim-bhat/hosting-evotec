@@ -36,7 +36,7 @@ $user = getUserById($conn, $payment['user_id']);
 
 // Get company settings
 $companyName = getCompanyName($conn);
-$companyEmail = getSetting($conn, 'company_email', 'info@example.com');
+$companyEmail = getSetting($conn, 'company_email', 'hi@infralabs.in');
 $companyPhone = getSetting($conn, 'company_phone', '+91 123 456 7890');
 $companyAddress = getSetting($conn, 'company_address', '');
 $gstNumber = getSetting($conn, 'company_gst', '');

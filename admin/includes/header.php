@@ -73,6 +73,10 @@ $companyLogo = getCompanyLogo($conn);
                 <i class="bi bi-cart-fill"></i>
                 <span>Orders</span>
             </a>
+            <a href="coupons.php" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'coupons.php') ? 'active' : ''; ?>">
+                <i class="bi bi-tag-fill"></i>
+                <span>Coupons</span>
+            </a>
             <!-- <a href="websites.php" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'websites.php') ? 'active' : ''; ?>">
                 <i class="bi bi-globe"></i>
                 <span>Websites</span>

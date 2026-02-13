@@ -4,6 +4,7 @@ require_once 'config.php';
 require_once 'components/auth_helper.php';
 require_once 'components/flash_message.php';
 require_once 'components/settings_helper.php';
+require_once 'components/mail_helper.php';
 
 // Redirect if already logged in
 if (isLoggedIn()) {
@@ -16,6 +17,12 @@ if (isLoggedIn()) {
 
 // Process login form
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Validate CSRF token
+    if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
+        setFlashMessage('error', 'Invalid form submission. Please try again.');
+        redirect('login.php');
+    }
+    
     $email = sanitizeInput($_POST['email']);
     $password = $_POST['password'];
     
@@ -33,14 +40,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($user['status'] === 'blocked') {
                 setFlashMessage('error', 'Your account has been blocked. Please contact support.');
             } elseif (verifyPassword($password, $user['password'])) {
-                // Password is correct
+                // Password is correct - check if user is verified
+                if (isset($user['is_verified']) && $user['is_verified'] == 0 && $user['role'] !== 'admin') {
+                    // Generate and send OTP
+                    $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+                    
+                    // Delete any existing OTPs for this user
+                    $delStmt = $conn->prepare("DELETE FROM otp_verifications WHERE user_id = ?");
+                    $delStmt->bind_param("i", $user['id']);
+                    $delStmt->execute();
+                    $delStmt->close();
+                    
+                    // Store new OTP (use MySQL DATE_ADD to avoid PHP/MySQL timezone mismatch)
+                    $otpStmt = $conn->prepare("INSERT INTO otp_verifications (user_id, otp_code, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE))");
+                    $otpStmt->bind_param("is", $user['id'], $otp);
+                    $otpStmt->execute();
+                    $otpStmt->close();
+                    
+                    // Send OTP email (non-blocking: redirect even if mail fails)
+                    try {
+                        sendOtpMail($conn, $user['email'], $otp, $user['name']);
+                    } catch (\Exception $e) {
+                        // Mail failed but OTP is stored in DB; user can resend from verify page
+                    }
+                    
+                    // Store user ID in session temporarily for OTP verification
+                    $_SESSION['otp_user_id'] = $user['id'];
+                    $_SESSION['otp_email'] = $user['email'];
+                    
+                    setFlashMessage('info', 'A verification code has been sent to your email address.');
+                    redirect('verify-otp.php');
+                }
+                
+                // User is verified or is admin
                 createUserSession($user);
                 updateLastLogin($conn, $user['id']);
                 setFlashMessage('success', 'Login successful! Welcome back, ' . $user['name']);
                 
-                // Check for redirect parameter
+                // Check for redirect parameter - only allow relative URLs
                 if (isset($_GET['redirect'])) {
-                    redirect($_GET['redirect']);
+                    $redirectUrl = $_GET['redirect'];
+                    // Only allow relative paths (prevent open redirect)
+                    if (strpos($redirectUrl, '/') === 0 || strpos($redirectUrl, 'http') !== 0) {
+                        redirect($redirectUrl);
+                    }
                 }
                 
                 // Redirect based on user role
@@ -293,6 +336,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php displayFlashMessage(); ?>
 
             <form action="" method="POST">
+                <?php echo csrfField(); ?>
                 <div class="form-group">
                     <label for="email" class="form-label">Email address</label>
                     <input type="email" 

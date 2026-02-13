@@ -4,6 +4,8 @@ require_once 'components/auth_helper.php';
 require_once 'components/hosting_helper.php';
 require_once 'components/flash_message.php';
 require_once 'components/cleanup_helper.php';
+require_once 'components/mail_helper.php';
+require_once 'components/coupon_helper.php';
 
 // Check if user is logged in
 if (!isLoggedIn()) {
@@ -63,8 +65,22 @@ if ($status === 'success' && !empty($paymentId)) {
         $stmt->close();
     }
     
+    // Record coupon usage if a coupon was applied
+    if (!empty($order['coupon_id']) && $order['coupon_id'] > 0) {
+        applyCoupon($conn, $order['coupon_id'], $_SESSION['user_id'], $orderId, $order['discount_amount']);
+    }
+    
     // Auto-cleanup: Cancel other pending orders for this user
     cancelUserPendingOrders($conn, $_SESSION['user_id'], $orderId);
+    
+    // Send subscription confirmation email
+    $user = getUserById($conn, $_SESSION['user_id']);
+    $package = getPackageById($conn, $order['package_id']);
+    // Refresh order data to get updated status
+    $updatedOrder = getOrderById($conn, $orderId);
+    if ($user && $package && $updatedOrder) {
+        sendSubscriptionMail($conn, $user, $updatedOrder, $package);
+    }
     
     setFlashMessage('success', 'Payment successful! Your hosting account has been activated.');
     redirect('user/index.php');

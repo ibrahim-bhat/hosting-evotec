@@ -5,6 +5,7 @@ require_once 'components/auth_helper.php';
 require_once 'components/hosting_helper.php';
 require_once 'components/payment_settings_helper.php';
 require_once 'components/settings_helper.php';
+require_once 'components/coupon_helper.php';
 
 // Get package from URL
 $packageSlug = isset($_GET['package']) ? sanitizeInput($_GET['package']) : '';
@@ -54,7 +55,7 @@ $isLoggedIn = isLoggedIn();
 $isRenewal = !empty($renewOrderId);
 $availableCycles = [];
 if (!empty($package['price_yearly']) && $package['price_yearly'] > 0) {
-    $renewalYearly = getPackageRenewalPrice($package, 'yearly');
+    $renewalYearly = getPackageRenewalPrice($package, 'yearly', $conn);
     $availableCycles['yearly'] = [
         'price' => $package['price_yearly'] / 12,
         'label' => 'Yearly',
@@ -63,7 +64,7 @@ if (!empty($package['price_yearly']) && $package['price_yearly'] > 0) {
     ];
 }
 if (!empty($package['price_2years']) && $package['price_2years'] > 0) {
-    $renewal2y = getPackageRenewalPrice($package, '2years');
+    $renewal2y = getPackageRenewalPrice($package, '2years', $conn);
     $availableCycles['2years'] = [
         'price' => $package['price_2years'] / 24,
         'label' => '2 Years',
@@ -72,7 +73,7 @@ if (!empty($package['price_2years']) && $package['price_2years'] > 0) {
     ];
 }
 if (!empty($package['price_4years']) && $package['price_4years'] > 0) {
-    $renewal4y = getPackageRenewalPrice($package, '4years');
+    $renewal4y = getPackageRenewalPrice($package, '4years', $conn);
     $availableCycles['4years'] = [
         'price' => $package['price_4years'] / 48,
         'label' => '4 Years',
@@ -303,16 +304,6 @@ $calculations = calculateOrderTotal($conn, $cyclePrice, $isRenewal);
             margin-top: 8px;
         }
 
-        .billing-notice {
-            background: #FEF3C7;
-            border: 1px solid #FCD34D;
-            border-radius: 8px;
-            padding: 12px;
-            margin: 16px 0;
-            font-size: 13px;
-            color: #92400E;
-        }
-
         .btn-continue {
             width: 100%;
             background: var(--primary-blue);
@@ -348,6 +339,14 @@ $calculations = calculateOrderTotal($conn, $cyclePrice, $isRenewal);
             color: var(--primary-blue);
             text-decoration: none;
             font-weight: 600;
+        }
+
+        .coupon-section {
+            background: var(--light-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
         }
 
         @media (max-width: 768px) {
@@ -444,8 +443,16 @@ $calculations = calculateOrderTotal($conn, $cyclePrice, $isRenewal);
 
                 <div class="summary-divider"></div>
 
+                <!-- Coupon discount row (hidden until applied) -->
+                <div class="summary-row" id="coupon-discount-row" style="display:none;">
+                    <span class="summary-label" style="color:#10B981;">Coupon Discount</span>
+                    <span class="summary-value" style="color:#10B981;" id="coupon-discount-value">-₹0.00</span>
+                </div>
+
+                <div class="summary-divider"></div>
+
                 <div class="price-display">
-                    <div class="price-amount">₹<?php echo number_format($calculations['total_amount'], 2); ?></div>
+                    <div class="price-amount" id="total-amount-display">₹<?php echo number_format($calculations['total_amount'], 2); ?></div>
                     <div class="price-period">Total payable amount</div>
                 </div>
 
@@ -455,13 +462,33 @@ $calculations = calculateOrderTotal($conn, $cyclePrice, $isRenewal);
                 </div>
                 <?php endif; ?>
 
-                <div class="billing-notice">
-                    <i class="fas fa-info-circle"></i> You will be billed ₹<?php echo number_format($calculations['total_amount'], 2); ?> (incl. taxes) for <?php echo ucfirst(str_replace('years', ' Years', $billingCycle)); ?> period
+                <!-- Coupon Input -->
+                <div class="coupon-section" id="coupon-section">
+                    <div style="display:flex; gap:8px; align-items:flex-end;">
+                        <div style="flex:1;">
+                            <label style="font-size:13px; font-weight:600; margin-bottom:6px; display:block; color:var(--text-secondary);">Have a coupon?</label>
+                            <input type="text" id="coupon_code" placeholder="Enter code" 
+                                   style="width:100%; padding:10px 14px; border:2px solid var(--border-color); border-radius:10px; font-size:14px; font-family:inherit; text-transform:uppercase; background:var(--light-bg); transition:border-color 0.3s;"
+                                   onfocus="this.style.borderColor='var(--primary-blue)'" onblur="this.style.borderColor='var(--border-color)'">
+                        </div>
+                        <button type="button" id="applyCouponBtn" onclick="applyCoupon()"
+                                style="padding:10px 20px; background:var(--primary-blue); color:white; border:none; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap; transition:background 0.3s;"
+                                onmouseover="this.style.background='var(--primary-blue-hover)'" onmouseout="this.style.background='var(--primary-blue)'">
+                            Apply
+                        </button>
+                    </div>
+                    <div id="coupon-message" style="margin-top:8px; font-size:13px;"></div>
+                    <div id="coupon-applied" style="display:none; margin-top:8px; display:none; justify-content:space-between; align-items:center;">
+                        <span style="color:#10B981; font-weight:600; font-size:13px;" id="coupon-applied-text"></span>
+                        <button type="button" onclick="removeCoupon()" 
+                                style="padding:4px 12px; font-size:12px; border:1px solid #EF4444; color:#EF4444; background:none; border-radius:6px; cursor:pointer;">Remove</button>
+                    </div>
                 </div>
 
+
                 <?php if ($isLoggedIn): ?>
-                    <a href="checkout.php?package=<?php echo urlencode($packageSlug); ?>&cycle=<?php echo $billingCycle; ?><?php echo $renewOrderId ? '&renew=' . $renewOrderId : ''; ?>" class="btn-continue">
-                        <i class="fas fa-lock"></i> Login to Continue
+                    <a id="continueBtn" href="checkout.php?package=<?php echo urlencode($packageSlug); ?>&cycle=<?php echo $billingCycle; ?><?php echo $renewOrderId ? '&renew=' . $renewOrderId : ''; ?>" class="btn-continue">
+                        <i class="fas fa-shopping-cart"></i> Continue to Checkout
                     </a>
                 <?php else: ?>
                     <a href="login.php?redirect=<?php echo urlencode('select-package.php?package=' . $packageSlug . '&cycle=' . $billingCycle); ?>" class="btn-continue">
@@ -474,5 +501,106 @@ $calculations = calculateOrderTotal($conn, $cyclePrice, $isRenewal);
             </div>
         </div>
     </div>
+
+    <script>
+        var originalTotal = <?php echo $calculations['total_amount']; ?>;
+        var appliedCouponCode = '';
+        var baseCheckoutUrl = document.getElementById('continueBtn') ? document.getElementById('continueBtn').getAttribute('href') : '';
+
+        function applyCoupon() {
+            var code = document.getElementById('coupon_code').value.trim();
+            if (!code) {
+                showCouponMsg('Please enter a coupon code.', '#EF4444');
+                return;
+            }
+
+            var btn = document.getElementById('applyCouponBtn');
+            btn.disabled = true;
+            btn.textContent = 'Applying...';
+
+            var formData = new URLSearchParams();
+            formData.append('coupon_code', code);
+            formData.append('order_id', '0');
+            formData.append('order_total', originalTotal);
+
+            fetch('apply-coupon.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                btn.disabled = false;
+                btn.textContent = 'Apply';
+
+                if (data.valid) {
+                    var discount = parseFloat(data.discount);
+                    var newTotal = Math.max(0, originalTotal - discount);
+                    appliedCouponCode = code.toUpperCase();
+
+                    // Update price display
+                    document.getElementById('coupon-discount-row').style.display = 'flex';
+                    document.getElementById('coupon-discount-value').textContent = '-₹' + discount.toFixed(2);
+                    document.getElementById('total-amount-display').textContent = '₹' + newTotal.toFixed(2);
+
+                    // Show applied state
+                    document.getElementById('coupon_code').disabled = true;
+                    btn.style.display = 'none';
+
+                    var appliedDiv = document.getElementById('coupon-applied');
+                    appliedDiv.style.display = 'flex';
+                    var label = data.discount_type === 'percentage'
+                        ? appliedCouponCode + ' (' + parseFloat(data.discount_value) + '% off) applied!'
+                        : appliedCouponCode + ' (₹' + parseFloat(data.discount_value).toFixed(2) + ' off) applied!';
+                    document.getElementById('coupon-applied-text').textContent = label;
+
+                    // Update checkout URL to include coupon
+                    updateCheckoutUrl();
+
+                    showCouponMsg('Coupon applied successfully!', '#10B981');
+                } else {
+                    showCouponMsg(data.message, '#EF4444');
+                }
+            })
+            .catch(function() {
+                btn.disabled = false;
+                btn.textContent = 'Apply';
+                showCouponMsg('Something went wrong. Please try again.', '#EF4444');
+            });
+        }
+
+        function removeCoupon() {
+            appliedCouponCode = '';
+
+            // Reset UI
+            document.getElementById('coupon-discount-row').style.display = 'none';
+            document.getElementById('total-amount-display').textContent = '₹' + originalTotal.toFixed(2);
+            document.getElementById('coupon_code').disabled = false;
+            document.getElementById('coupon_code').value = '';
+            document.getElementById('applyCouponBtn').style.display = 'block';
+            document.getElementById('coupon-applied').style.display = 'none';
+            document.getElementById('coupon-message').innerHTML = '';
+
+            // Remove coupon from checkout URL
+            updateCheckoutUrl();
+        }
+
+        function updateCheckoutUrl() {
+            var btn = document.getElementById('continueBtn');
+            if (!btn) return;
+
+            var url = baseCheckoutUrl;
+            if (appliedCouponCode) {
+                url += (url.indexOf('?') >= 0 ? '&' : '?') + 'coupon=' + encodeURIComponent(appliedCouponCode);
+            }
+            btn.setAttribute('href', url);
+        }
+
+        function showCouponMsg(msg, color) {
+            var el = document.getElementById('coupon-message');
+            el.innerHTML = '<span style="color:' + color + ';">' + msg + '</span>';
+            setTimeout(function() { el.innerHTML = ''; }, 5000);
+        }
+    </script>
 </body>
 </html>

@@ -166,9 +166,11 @@ $pageTitle = "My Orders & Payments";
     $orderId = (int)$_GET['id'];
     if (canUserAccessOrder($conn, $userId, $orderId)) {
         $stmt = $conn->prepare("
-            SELECT ho.*, hp.name as package_name, hp.description as package_description
+            SELECT ho.*, hp.name as package_name, hp.description as package_description,
+                   c.code as coupon_code
             FROM hosting_orders ho 
             LEFT JOIN hosting_packages hp ON ho.package_id = hp.id 
+            LEFT JOIN coupons c ON ho.coupon_id = c.id
             WHERE ho.id = ?
         ");
         $stmt->bind_param("i", $orderId);
@@ -215,6 +217,12 @@ $pageTitle = "My Orders & Payments";
                                 <label class="form-label">Processing Fee</label>
                                 <div class="form-control-plaintext"><?php echo formatCurrency($orderDetails['processing_fee']); ?></div>
                             </div>
+                            <?php if (!empty($orderDetails['discount_amount']) && $orderDetails['discount_amount'] > 0): ?>
+                            <div class="col-md-6">
+                                <label class="form-label">Coupon Discount<?php echo !empty($orderDetails['coupon_code']) ? ' (' . htmlspecialchars($orderDetails['coupon_code']) . ')' : ''; ?></label>
+                                <div class="form-control-plaintext" style="color:#10B981; font-weight:600;">-<?php echo formatCurrency($orderDetails['discount_amount']); ?></div>
+                            </div>
+                            <?php endif; ?>
                             <div class="col-md-6">
                                 <label class="form-label">Total Amount</label>
                                 <div class="form-control-plaintext fw-bold"><?php echo formatCurrency($orderDetails['total_amount']); ?></div>

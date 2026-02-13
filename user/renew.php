@@ -119,19 +119,19 @@ $pageTitle = "Renew or Upgrade - Order #" . htmlspecialchars($order['order_numbe
                     $isCurrentPkg = ($package['id'] == $order['package_id']);
                     $prices = [];
                     if ($package['price_monthly'] > 0) {
-                        $rp = $isCurrentPkg ? getPackageRenewalPrice($package, 'monthly') : $package['price_monthly'];
+                        $rp = $isCurrentPkg ? getPackageRenewalPrice($package, 'monthly', $conn) : $package['price_monthly'];
                         $prices[] = formatCurrency($rp) . '/mo';
                     }
                     if ($package['price_yearly'] > 0) {
-                        $rp = $isCurrentPkg ? getPackageRenewalPrice($package, 'yearly') : $package['price_yearly'];
+                        $rp = $isCurrentPkg ? getPackageRenewalPrice($package, 'yearly', $conn) : $package['price_yearly'];
                         $prices[] = formatCurrency($rp) . '/yr';
                     }
                     if ($package['price_2years'] > 0) {
-                        $rp = $isCurrentPkg ? getPackageRenewalPrice($package, '2years') : $package['price_2years'];
+                        $rp = $isCurrentPkg ? getPackageRenewalPrice($package, '2years', $conn) : $package['price_2years'];
                         $prices[] = formatCurrency($rp) . '/2yr';
                     }
                     if ($package['price_4years'] > 0) {
-                        $rp = $isCurrentPkg ? getPackageRenewalPrice($package, '4years') : $package['price_4years'];
+                        $rp = $isCurrentPkg ? getPackageRenewalPrice($package, '4years', $conn) : $package['price_4years'];
                         $prices[] = formatCurrency($rp) . '/4yr';
                     }
                     
@@ -178,26 +178,26 @@ $pageTitle = "Renew or Upgrade - Order #" . htmlspecialchars($order['order_numbe
                         <?php 
                         $isCurrentPkg = ($package['id'] == $order['package_id']);
                         if ($package['price_monthly'] > 0): 
-                            $rpMonthly = $isCurrentPkg ? getPackageRenewalPrice($package, 'monthly') : $package['price_monthly'];
+                            $rpMonthly = $isCurrentPkg ? getPackageRenewalPrice($package, 'monthly', $conn) : $package['price_monthly'];
                         ?>
                             <option value="monthly">Monthly - <?php echo formatCurrency($rpMonthly); ?> + taxes</option>
                         <?php endif; ?>
                         <?php if ($package['price_yearly'] > 0): 
-                            $rpYearly = $isCurrentPkg ? getPackageRenewalPrice($package, 'yearly') : $package['price_yearly'];
+                            $rpYearly = $isCurrentPkg ? getPackageRenewalPrice($package, 'yearly', $conn) : $package['price_yearly'];
                         ?>
                             <option value="yearly" <?php echo $order['billing_cycle'] == 'yearly' ? 'selected' : ''; ?>>
                                 Yearly - <?php echo formatCurrency($rpYearly); ?> + taxes
                             </option>
                         <?php endif; ?>
                         <?php if ($package['price_2years'] > 0): 
-                            $rp2y = $isCurrentPkg ? getPackageRenewalPrice($package, '2years') : $package['price_2years'];
+                            $rp2y = $isCurrentPkg ? getPackageRenewalPrice($package, '2years', $conn) : $package['price_2years'];
                         ?>
                             <option value="2years" <?php echo $order['billing_cycle'] == '2years' ? 'selected' : ''; ?>>
                                 2 Years - <?php echo formatCurrency($rp2y); ?> + taxes
                             </option>
                         <?php endif; ?>
                         <?php if ($package['price_4years'] > 0): 
-                            $rp4y = $isCurrentPkg ? getPackageRenewalPrice($package, '4years') : $package['price_4years'];
+                            $rp4y = $isCurrentPkg ? getPackageRenewalPrice($package, '4years', $conn) : $package['price_4years'];
                         ?>
                             <option value="4years" <?php echo $order['billing_cycle'] == '4years' ? 'selected' : ''; ?>>
                                 4 Years - <?php echo formatCurrency($rp4y); ?> + taxes

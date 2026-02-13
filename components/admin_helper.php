@@ -151,23 +151,6 @@ function getPercentageChange($current, $previous) {
     return round((($current - $previous) / $previous) * 100, 1);
 }
 
-/**
- * Format time ago
- */
-function timeAgo($timestamp) {
-    $time = strtotime($timestamp);
-    $diff = time() - $time;
-    
-    if ($diff < 60) {
-        return $diff . ' seconds ago';
-    } elseif ($diff < 3600) {
-        return floor($diff / 60) . ' hours ago';
-    } elseif ($diff < 86400) {
-        return floor($diff / 3600) . ' hours ago';
-    } elseif ($diff < 604800) {
-        return floor($diff / 86400) . ' days ago';
-    } else {
-        return date('M d, Y', $time);
-    }
-}
+// timeAgo is provided by components/utils.php
+require_once __DIR__ . '/utils.php';
 ?>

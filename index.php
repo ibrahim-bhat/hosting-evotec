@@ -747,24 +747,23 @@ include 'components/header.php';
                   // Skip if no pricing
                   if (empty($availablePrices)) continue;
 
-                  // Get default price
-                  $defaultCycle = 'monthly';
-                  if (isset($availablePrices['monthly'])) {
-                     $defaultCycle = 'monthly';
-                     $displayPrice = $availablePrices['monthly']['perMonth'];
-                     $renewalPrice = $availablePrices['monthly']['renewal'];
-                  } elseif (isset($availablePrices['yearly'])) {
-                     $defaultCycle = 'yearly';
-                     $displayPrice = $availablePrices['yearly']['perMonth'];
-                     $renewalPrice = $availablePrices['yearly']['renewal'];
+                  // Prefer longest cycle for display (cheapest per-month, Hostinger-style)
+                  if (isset($availablePrices['4years'])) {
+                     $defaultCycle = '4years';
+                     $displayPrice = $availablePrices['4years']['perMonth'];
+                     $renewalPrice = $availablePrices['4years']['renewal'];
                   } elseif (isset($availablePrices['2years'])) {
                      $defaultCycle = '2years';
                      $displayPrice = $availablePrices['2years']['perMonth'];
                      $renewalPrice = $availablePrices['2years']['renewal'];
+                  } elseif (isset($availablePrices['yearly'])) {
+                     $defaultCycle = 'yearly';
+                     $displayPrice = $availablePrices['yearly']['perMonth'];
+                     $renewalPrice = $availablePrices['yearly']['renewal'];
                   } else {
-                     $defaultCycle = '4years';
-                     $displayPrice = $availablePrices['4years']['perMonth'];
-                     $renewalPrice = $availablePrices['4years']['renewal'];
+                     $defaultCycle = 'monthly';
+                     $displayPrice = $availablePrices['monthly']['perMonth'];
+                     $renewalPrice = $availablePrices['monthly']['renewal'];
                   }
 
                   // Parse features
@@ -779,17 +778,12 @@ include 'components/header.php';
                      <?php if ($isPopular): ?>
                         <div class="popular-badge">MOST POPULAR</div>
                      <?php endif; ?>
-
                      <div class="pricing-header">
                         <h3 class="pricing-name"><?php echo htmlspecialchars($package['name']); ?></h3>
                         <div class="pricing-price">
                            <span class="currency">₹</span>
                            <span class="amount"><?php echo number_format($displayPrice, 0); ?></span>
                            <span class="period">/month</span>
-                        </div>
-                        <div class="pricing-cycle">Billed <?php echo $defaultCycle == 'monthly' ? 'Monthly' : ucfirst($defaultCycle); ?></div>
-                        <div style="font-size:12px; color:#9CA3AF; margin-top:4px;">
-                           * Prices exclude applicable GST & fees
                         </div>
                      </div>
 

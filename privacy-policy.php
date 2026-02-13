@@ -5,7 +5,7 @@ require_once 'components/settings_helper.php';
 
 // Get company settings
 $companyName = getCompanyName($conn);
-$companyEmail = getSetting($conn, 'company_email', 'info@example.com');
+$companyEmail = getSetting($conn, 'company_email', 'hi@infralabs.in');
 
 $pageTitle = "Privacy Policy - InfraLabs Cloud";
 ?>

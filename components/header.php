@@ -57,7 +57,7 @@ if (!isset($pageTitle)) {
                     <a href="custom-solutions.php" class="nav-link">Custom Solutions</a>
                     <a href="contact.php" class="nav-link">Contact</a>
                     <?php if (isset($_SESSION['user_id'])): ?>
-                        <a href="<?php echo (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin') ? 'admin/index.php' : 'user/index.php'; ?>" class="nav-link">
+                        <a href="<?php echo (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ? 'admin/index.php' : 'user/index.php'; ?>" class="nav-link">
                             <i class="fas fa-user"></i> Dashboard
                         </a>
                         <a href="logout.php" class="btn-secondary">Logout</a>

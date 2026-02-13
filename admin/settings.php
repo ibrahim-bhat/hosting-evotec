@@ -2,10 +2,42 @@
 require_once '../config.php';
 require_once '../components/auth_helper.php';
 require_once '../components/admin_helper.php';
+require_once '../components/settings_helper.php';
+require_once '../components/mail_helper.php';
 
 // Check if user is logged in and is admin
 requireLogin($conn);
 requireAdmin($conn);
+
+// Validate CSRF for all POSTs
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
+        $_SESSION['flash_message'] = 'Invalid form submission. Please try again.';
+        $_SESSION['flash_type'] = 'error';
+        header('Location: settings.php');
+        exit;
+    }
+}
+
+// Handle test email
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_test_email'])) {
+    $testEmail = sanitizeInput($_POST['test_email'] ?? '');
+    if (!empty($testEmail) && filter_var($testEmail, FILTER_VALIDATE_EMAIL)) {
+        $result = sendTestMail($conn, $testEmail);
+        if ($result['success']) {
+            $_SESSION['flash_message'] = 'Test email sent successfully to ' . htmlspecialchars($testEmail);
+            $_SESSION['flash_type'] = 'success';
+        } else {
+            $_SESSION['flash_message'] = 'Failed to send test email: ' . htmlspecialchars($result['message']);
+            $_SESSION['flash_type'] = 'error';
+        }
+    } else {
+        $_SESSION['flash_message'] = 'Please enter a valid email address';
+        $_SESSION['flash_type'] = 'error';
+    }
+    header('Location: settings.php');
+    exit;
+}
 
 // Handle settings update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_settings'])) {
@@ -13,7 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_settings'])) {
     $failed = 0;
     
     foreach ($_POST as $key => $value) {
-        if ($key !== 'update_settings' && strpos($key, 'setting_') === 0) {
+        if ($key === 'update_settings' || $key === 'csrf_token') continue;
+        if (strpos($key, 'setting_') === 0) {
             $settingKey = str_replace('setting_', '', $key);
             $settingValue = is_array($value) ? json_encode($value) : sanitizeInput($value);
             
@@ -47,9 +80,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_settings'])) {
                 $filepath = $uploadDir . $filename;
                 
                 if (move_uploaded_file($file['tmp_name'], $filepath)) {
-                    $relativeePath = 'uploads/settings/' . $filename;
+                    $relativePath = 'uploads/settings/' . $filename;
                     $stmt = $conn->prepare("UPDATE settings SET setting_value = ?, updated_at = NOW() WHERE setting_key = ?");
-                    $stmt->bind_param("ss", $relativeePath, $settingKey);
+                    $stmt->bind_param("ss", $relativePath, $settingKey);
                     
                     if ($stmt->execute()) {
                         $updated++;
@@ -80,18 +113,6 @@ while ($row = $settingsResult->fetch_assoc()) {
     $settings[$row['setting_group']][] = $row;
 }
 
-// Get setting value helper
-function getSettingValue($key, $default = '') {
-    global $conn;
-    $stmt = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = ?");
-    $stmt->bind_param("s", $key);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-    $stmt->close();
-    return $row ? $row['setting_value'] : $default;
-}
-
 $pageTitle = 'System Settings';
 include 'includes/header.php';
 ?>
@@ -118,6 +139,7 @@ include 'includes/header.php';
 
 <!-- Settings Form -->
 <form method="POST" enctype="multipart/form-data">
+    <?php echo csrfField(); ?>
     <div class="settings-container">
         
         <!-- Company Information -->
@@ -204,6 +226,7 @@ include 'includes/header.php';
                     <div class="form-group">
                         <?php if ($setting['setting_type'] === 'boolean'): ?>
                             <div class="form-check form-switch">
+                                <input type="hidden" name="setting_<?php echo $setting['setting_key']; ?>" value="0">
                                 <input class="form-check-input" 
                                        type="checkbox" 
                                        id="setting_<?php echo $setting['setting_key']; ?>" 
@@ -246,6 +269,7 @@ include 'includes/header.php';
                     <div class="form-group">
                         <?php if ($setting['setting_type'] === 'boolean'): ?>
                             <div class="form-check form-switch">
+                                <input type="hidden" name="setting_<?php echo $setting['setting_key']; ?>" value="0">
                                 <input class="form-check-input" 
                                        type="checkbox" 
                                        id="setting_<?php echo $setting['setting_key']; ?>" 
@@ -275,6 +299,116 @@ include 'includes/header.php';
         </div>
         <?php endif; ?>
         
+        <!-- Email / SMTP Settings -->
+        <div class="settings-card">
+            <div class="settings-card-header">
+                <i class="bi bi-envelope"></i>
+                <h3>Email / SMTP Settings</h3>
+            </div>
+            <div class="settings-card-body">
+                <div class="form-group">
+                    <div class="form-check form-switch">
+                        <input type="hidden" name="setting_smtp_enabled" value="0">
+                        <input class="form-check-input" 
+                               type="checkbox" 
+                               id="setting_smtp_enabled" 
+                               name="setting_smtp_enabled"
+                               value="1"
+                               <?php echo getSetting($conn, 'smtp_enabled', '0') == '1' ? 'checked' : ''; ?>>
+                        <label class="form-check-label" for="setting_smtp_enabled">
+                            Enable Email Sending
+                        </label>
+                    </div>
+                    <small class="form-text text-muted">Turn on/off all outgoing emails (OTP, welcome, subscription notifications)</small>
+                </div>
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="form-group">
+                            <label for="setting_smtp_host" class="form-label">SMTP Host</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="setting_smtp_host" 
+                                   name="setting_smtp_host"
+                                   placeholder="e.g. smtp.gmail.com"
+                                   value="<?php echo htmlspecialchars(getSetting($conn, 'smtp_host', '')); ?>">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="setting_smtp_port" class="form-label">SMTP Port</label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="setting_smtp_port" 
+                                   name="setting_smtp_port"
+                                   placeholder="587"
+                                   value="<?php echo htmlspecialchars(getSetting($conn, 'smtp_port', '587')); ?>">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="setting_smtp_username" class="form-label">SMTP Username</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="setting_smtp_username" 
+                                   name="setting_smtp_username"
+                                   value="<?php echo htmlspecialchars(getSetting($conn, 'smtp_username', '')); ?>">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="setting_smtp_password" class="form-label">SMTP Password</label>
+                            <input type="password" 
+                                   class="form-control" 
+                                   id="setting_smtp_password" 
+                                   name="setting_smtp_password"
+                                   value="<?php echo htmlspecialchars(getSetting($conn, 'smtp_password', '')); ?>">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="setting_smtp_encryption" class="form-label">Encryption</label>
+                            <select class="form-select" id="setting_smtp_encryption" name="setting_smtp_encryption">
+                                <option value="tls" <?php echo getSetting($conn, 'smtp_encryption', 'tls') == 'tls' ? 'selected' : ''; ?>>TLS</option>
+                                <option value="ssl" <?php echo getSetting($conn, 'smtp_encryption', 'tls') == 'ssl' ? 'selected' : ''; ?>>SSL</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="setting_smtp_from_email" class="form-label">From Email</label>
+                            <input type="email" 
+                                   class="form-control" 
+                                   id="setting_smtp_from_email" 
+                                   name="setting_smtp_from_email"
+                                   placeholder="noreply@example.com"
+                                   value="<?php echo htmlspecialchars(getSetting($conn, 'smtp_from_email', '')); ?>">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="setting_smtp_from_name" class="form-label">From Name</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="setting_smtp_from_name" 
+                                   name="setting_smtp_from_name"
+                                   placeholder="InfraLabs Cloud"
+                                   value="<?php echo htmlspecialchars(getSetting($conn, 'smtp_from_name', '')); ?>">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>For Gmail:</strong> Use <code>smtp.gmail.com</code>, port <code>587</code>, TLS encryption. 
+                    You may need to use an <a href="https://myaccount.google.com/apppasswords" target="_blank">App Password</a> instead of your regular password.
+                </div>
+            </div>
+        </div>
+        
         <!-- Payment Settings (Razorpay) -->
         <?php if (isset($settings['payment'])): ?>
         <div class="settings-card">
@@ -286,13 +420,14 @@ include 'includes/header.php';
                 <?php foreach ($settings['payment'] as $setting): ?>
                     <?php 
                     // Skip global payment settings - they have dedicated fields below
-                    if (in_array($setting['setting_key'], ['global_setup_fee', 'global_gst_percentage', 'global_processing_fee', 'currency_symbol', 'currency_code'])) {
+                    if (in_array($setting['setting_key'], ['global_setup_fee', 'global_gst_percentage', 'global_processing_fee', 'currency_symbol', 'currency_code', 'renewal_markup_percentage'])) {
                         continue;
                     }
                     ?>
                     <div class="form-group">
                         <?php if ($setting['setting_type'] === 'boolean'): ?>
                             <div class="form-check form-switch">
+                                <input type="hidden" name="setting_<?php echo $setting['setting_key']; ?>" value="0">
                                 <input class="form-check-input" 
                                        type="checkbox" 
                                        id="setting_<?php echo $setting['setting_key']; ?>" 
@@ -336,7 +471,21 @@ include 'includes/header.php';
                 <hr class="my-4">
                 <h5 class="mb-3">Global Payment Settings</h5>
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="setting_renewal_markup_percentage" class="form-label">Renewal Markup (%)</label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="setting_renewal_markup_percentage" 
+                                   name="setting_renewal_markup_percentage"
+                                   step="0.01"
+                                   min="0"
+                                   max="500"
+                                   value="<?php echo htmlspecialchars(getSetting($conn, 'renewal_markup_percentage', '0')); ?>">
+                            <small class="form-text text-muted">Markup % added to base price on renewals (e.g. 60% means 1000 renews at 1600)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
                         <div class="form-group">
                             <label for="setting_global_setup_fee" class="form-label">Setup Fee (%)</label>
                             <input type="number" 
@@ -350,7 +499,7 @@ include 'includes/header.php';
                             <small class="form-text text-muted">One-time setup fee % applied to new orders (calculated on base price)</small>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="form-group">
                             <label for="setting_global_gst_percentage" class="form-label">GST Percentage (%)</label>
                             <input type="number" 
@@ -364,7 +513,7 @@ include 'includes/header.php';
                             <small class="form-text text-muted">GST percentage applied to all orders</small>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="form-group">
                             <label for="setting_global_processing_fee" class="form-label">Processing Fee (%)</label>
                             <input type="number" 
@@ -415,6 +564,35 @@ include 'includes/header.php';
         <button type="submit" name="update_settings" class="btn-save-settings">
             <i class="bi bi-check-circle"></i> Save All Settings
         </button>
+    </div>
+</form>
+
+<!-- Send Test Email (separate form) -->
+<form method="POST">
+    <?php echo csrfField(); ?>
+    <div class="settings-container">
+        <div class="settings-card">
+            <div class="settings-card-header">
+                <i class="bi bi-send"></i>
+                <h3>Send Test Email</h3>
+            </div>
+            <div class="settings-card-body">
+                <p class="text-muted mb-3">Save your SMTP settings above first, then send a test email to verify the configuration.</p>
+                <div class="row align-items-end">
+                    <div class="col-md-8">
+                        <div class="form-group mb-0">
+                            <label for="test_email" class="form-label">Recipient Email</label>
+                            <input type="email" class="form-control" id="test_email" name="test_email" placeholder="test@example.com" required>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" name="send_test_email" class="btn btn-primary w-100">
+                            <i class="bi bi-send me-1"></i> Send Test Email
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </form>
 
