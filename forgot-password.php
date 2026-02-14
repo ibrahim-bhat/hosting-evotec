@@ -42,8 +42,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute();
             $stmt->close();
             
-            // Build reset URL
-            $resetUrl = SITE_URL . '/reset-password.php?token=' . urlencode($token);
+            // Build reset URL from current request so deployment uses correct domain (not localhost)
+            $baseUrl = SITE_URL;
+            if (!empty($_SERVER['HTTP_HOST'])) {
+                $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                $path = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+                $baseUrl = $scheme . '://' . $_SERVER['HTTP_HOST'] . $path;
+            }
+            $resetUrl = rtrim($baseUrl, '/') . '/reset-password.php?token=' . urlencode($token);
             
             // Send reset email
             try {

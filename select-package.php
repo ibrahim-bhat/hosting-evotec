@@ -457,8 +457,14 @@ $calculations = calculateOrderTotal($conn, $cyclePrice, $isRenewal);
                 </div>
 
                 <?php if (!$isRenewal && isset($availableCycles[$billingCycle]['renewal'])): ?>
+                <?php
+                    $renewalTotal = $availableCycles[$billingCycle]['renewal'];
+                    $renewalMonths = ['monthly' => 1, 'yearly' => 12, '2years' => 24, '4years' => 48];
+                    $months = $renewalMonths[$billingCycle] ?? 12;
+                    $renewalPerMonth = $months > 0 ? $renewalTotal / $months : $renewalTotal;
+                ?>
                 <div style="text-align:center; font-size:13px; color:var(--text-secondary); margin-bottom:12px;">
-                    <i class="fas fa-sync-alt"></i> Renews at ₹<?php echo number_format($availableCycles[$billingCycle]['renewal'], 2); ?> + taxes
+                    <i class="fas fa-sync-alt"></i> Renews at ₹<?php echo number_format($renewalPerMonth, 2); ?>/month
                 </div>
                 <?php endif; ?>
 

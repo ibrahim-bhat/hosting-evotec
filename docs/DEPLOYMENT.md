@@ -11,7 +11,7 @@ This document lists the commands and steps required to deploy the hosting platfo
 
 ## 1. Composer dependencies
 
-From the project root:
+**Run Composer on the server** (do not copy the `vendor` folder from your local machine or another OS). From the project root:
 
 ```bash
 composer install --no-dev
@@ -19,21 +19,31 @@ composer install --no-dev
 
 This installs PHPMailer, dompdf, and their dependencies.
 
+**If you see:** `Could not scan for classes inside ".../vendor/dompdf/dompdf/lib/" which does not appear to be a file nor a folder` — the `vendor` folder was likely copied from elsewhere or is corrupted. Fix it by removing `vendor` and reinstalling on the server:
+
+```bash
+rm -rf vendor
+composer install --no-dev
+```
+
 ## 2. Database
 
 - Create the database and database user.
 - If starting from scratch, import the base schema (e.g. `db.sql` if your project uses it for initial tables).
-- Run **migrations in order** so the schema is up to date:
+- Run **migrations in order** so the schema is up to date. **Replace `your_mysql_user` and `your_database_name`** with your actual MySQL username and database name (the `-p` option will prompt for the password):
 
 ```bash
-# Order matters. Run in sequence:
-mysql -u YOUR_USER -p YOUR_DATABASE < migrations/add_admin_plans_and_server_credentials.sql
-mysql -u YOUR_USER -p YOUR_DATABASE < migrations/global_fees_and_renewal_prices.sql
-mysql -u YOUR_USER -p YOUR_DATABASE < migrations/003_mail_otp_renewal_upgrade.sql
-mysql -u YOUR_USER -p YOUR_DATABASE < migrations/004_coupon_forgotpw_expiry.sql
+# Order matters. Run in sequence (use your real username and database name):
+mysql -u your_mysql_user -p your_database_name < migrations/add_admin_plans_and_server_credentials.sql
+mysql -u your_mysql_user -p your_database_name < migrations/global_fees_and_renewal_prices.sql
+mysql -u your_mysql_user -p your_database_name < migrations/003_mail_otp_renewal_upgrade.sql
+mysql -u your_mysql_user -p your_database_name < migrations/004_coupon_forgotpw_expiry.sql
 ```
 
-Or execute each file in the same order via phpMyAdmin or another client.
+Example: if your DB user is `infralabs_db` and database is `infralabs_cloud`:
+`mysql -u infralabs_db -p infralabs_cloud < migrations/004_coupon_forgotpw_expiry.sql`
+
+Or execute each migration file in the same order via phpMyAdmin or another client.
 
 ## 3. Configuration
 
