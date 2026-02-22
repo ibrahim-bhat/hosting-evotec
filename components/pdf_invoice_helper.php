@@ -135,7 +135,7 @@ function generatePDFInvoice($invoiceData, $download = true) {
     if ($download) {
         $options = new Options();
         $options->set('isRemoteEnabled', true);
-        $options->set('defaultFont', 'Deja Vu Sans');
+        $options->set('defaultFont', 'DejaVu Sans');
         
         $dompdf = new Dompdf($options);
         $dompdf->loadHtml($html, 'UTF-8');
@@ -182,7 +182,6 @@ function generateInvoiceHTML($invoiceData) {
     if ($currency === '') {
         $currency = '₹';
     }
-    
     $gstPercent = $items[0]['gst_percentage'] ?? 18;
     
     ob_start();
@@ -191,73 +190,92 @@ function generateInvoiceHTML($invoiceData) {
     <html lang="en">
     <head>
         <meta charset="UTF-8">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
         <title>Invoice <?php echo htmlspecialchars($invoiceNumber); ?></title>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: Deja Vu Sans, sans-serif; line-height: 1.5; color: #1f2937; background: #fff; font-size: 14px; }
-            .invoice-container { max-width: 800px; margin: 0 auto; padding: 40px; background: #fff; }
-            .user-block { margin-bottom: 28px; }
-            .user-name { font-size: 20px; font-weight: bold; color: #111; margin-bottom: 6px; }
-            .user-details { color: #4b5563; font-size: 14px; }
-            .section-title { font-size: 16px; font-weight: bold; color: #2563eb; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #2563eb; }
-            .service-details { margin-bottom: 24px; }
-            .service-details div { margin-bottom: 4px; color: #374151; }
-            .items-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-            .items-table th { background: #2563eb; color: #fff; padding: 12px 10px; text-align: left; font-weight: 600; font-size: 13px; }
+            body { font-family: "DejaVu Sans", sans-serif; line-height: 1.45; color: #334155; background: #fff; font-size: 11px; }
+            .invoice-container { max-width: 720px; margin: 0 auto; padding: 32px 40px; background: #fff; }
+            .invoice-header { width: 100%; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid #e2e8f0; }
+            .invoice-header td { vertical-align: top; padding: 0; }
+            .invoice-header td:last-child { text-align: right; }
+            .company-name { font-size: 18px; font-weight: bold; color: #0f172a; letter-spacing: -0.02em; margin-bottom: 4px; }
+            .company-meta { font-size: 10px; color: #64748b; }
+            .invoice-title { font-size: 22px; font-weight: bold; color: #0f172a; letter-spacing: -0.02em; margin-bottom: 4px; }
+            .invoice-meta { font-size: 10px; color: #64748b; }
+            .bill-to { margin-bottom: 24px; }
+            .bill-to-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; margin-bottom: 6px; }
+            .bill-to-name { font-size: 13px; font-weight: 600; color: #0f172a; margin-bottom: 2px; }
+            .bill-to-details { font-size: 10px; color: #64748b; }
+            .section-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; margin-bottom: 8px; }
+            .service-details { margin-bottom: 20px; font-size: 10px; color: #475569; }
+            .service-details div { margin-bottom: 2px; }
+            .items-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+            .items-table th { text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
             .items-table th.text-right { text-align: right; }
             .items-table th.text-center { text-align: center; }
-            .items-table td { padding: 12px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; color: #374151; }
+            .items-table td { padding: 10px; border-bottom: 1px solid #f1f5f9; vertical-align: top; font-size: 10px; color: #334155; }
             .items-table .text-right { text-align: right; }
             .items-table .text-center { text-align: center; }
-            .item-desc { font-weight: 600; margin-bottom: 4px; }
-            .item-period { font-size: 12px; color: #6b7280; }
-            .table-subtotal { text-align: right; margin-bottom: 20px; font-weight: bold; color: #111; }
-            .summary-band { background: #374151; color: #fff; padding: 16px 20px; margin-top: 4px; }
-            .summary-band div { margin-bottom: 6px; font-size: 14px; }
-            .summary-band div:last-child { margin-bottom: 0; }
-            .summary-band .label { color: #d1d5db; }
-            .summary-band .value { font-weight: bold; }
-            .invoice-footer { text-align: center; padding-top: 24px; margin-top: 24px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px; }
-            .invoice-footer a { color: #2563eb; }
+            .item-desc { font-weight: 600; color: #0f172a; margin-bottom: 2px; }
+            .item-period { font-size: 9px; color: #94a3b8; }
+            .table-subtotal { text-align: right; margin-bottom: 16px; font-size: 10px; color: #475569; }
+            .table-subtotal strong { color: #0f172a; }
+            .totals-table { width: 260px; margin-left: auto; border-collapse: collapse; border: 1px solid #e2e8f0; font-size: 10px; }
+            .totals-table td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; color: #64748b; }
+            .totals-table td:last-child { text-align: right; }
+            .totals-table tr:last-child td { border-bottom: none; background: #f8fafc; font-weight: 600; color: #0f172a; }
+            .totals-table .discount { color: #059669; }
+            .invoice-footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 9px; color: #94a3b8; }
+            .invoice-footer .company { font-weight: 600; color: #64748b; margin-bottom: 2px; }
         </style>
     </head>
     <body>
         <div class="invoice-container">
-            <!-- User (Bill To) at top -->
-            <div class="user-block">
-                <div class="user-name"><?php echo htmlspecialchars($user['name']); ?></div>
-                <div class="user-details"><?php echo htmlspecialchars($user['email']); ?></div>
+            <table class="invoice-header" cellpadding="0" cellspacing="0"><tr>
+                <td>
+                    <div class="company-name"><?php echo htmlspecialchars($company['name']); ?></div>
+                    <div class="company-meta"><?php echo htmlspecialchars($company['email']); ?></div>
+                </td>
+                <td>
+                    <div class="invoice-title">INVOICE</div>
+                    <div class="invoice-meta">#<?php echo htmlspecialchars($invoiceNumber); ?> &nbsp;&bull;&nbsp; <?php echo $issueDate; ?></div>
+                </td>
+            </tr></table>
+
+            <div class="bill-to">
+                <div class="bill-to-label">Bill to</div>
+                <div class="bill-to-name"><?php echo htmlspecialchars($user['name']); ?></div>
+                <div class="bill-to-details"><?php echo htmlspecialchars($user['email']); ?></div>
                 <?php if (!empty($user['phone'])): ?>
-                    <div class="user-details">Phone: <?php echo htmlspecialchars($user['phone']); ?></div>
+                    <div class="bill-to-details"><?php echo htmlspecialchars($user['phone']); ?></div>
                 <?php endif; ?>
             </div>
 
-            <!-- Service Details -->
-            <div class="section-title">Service Details</div>
+            <div class="section-label">Service details</div>
             <div class="service-details">
                 <?php if ($invoiceData['type'] === 'order'): ?>
                     <div><strong>Package:</strong> <?php echo htmlspecialchars($invoiceData['package']['name']); ?></div>
-                    <div><strong>Billing Cycle:</strong> <?php echo $invoiceData['billing_cycle']; ?></div>
+                    <div><strong>Billing cycle:</strong> <?php echo $invoiceData['billing_cycle']; ?></div>
                     <?php if (!empty($invoiceData['order']['domain_name'])): ?>
                         <div><strong>Domain:</strong> <?php echo htmlspecialchars($invoiceData['order']['domain_name']); ?></div>
                     <?php endif; ?>
                 <?php else: ?>
-                    <div><strong>Payment Type:</strong> Manual Payment</div>
+                    <div><strong>Payment type:</strong> Manual payment</div>
                     <div><strong>Reason:</strong> <?php echo htmlspecialchars($invoiceData['payment']['payment_reason']); ?></div>
                 <?php endif; ?>
             </div>
 
-            <!-- Charges table with blue header -->
             <table class="items-table">
                 <thead>
                     <tr>
                         <th>Description</th>
                         <th class="text-center">Qty</th>
-                        <th class="text-right">Unit Price</th>
-                        <th class="text-right">Setup Fee</th>
+                        <th class="text-right">Unit price</th>
+                        <th class="text-right">Setup fee</th>
                         <th class="text-right">Subtotal</th>
                         <th class="text-right">GST</th>
-                        <th class="text-right">Processing Fee</th>
+                        <th class="text-right">Processing fee</th>
                         <th class="text-right">Total</th>
                     </tr>
                 </thead>
@@ -267,7 +285,7 @@ function generateInvoiceHTML($invoiceData) {
                             <td>
                                 <div class="item-desc"><?php echo htmlspecialchars($item['description']); ?></div>
                                 <?php if ($invoiceData['type'] === 'order' && ($invoiceData['service_period']['start'] !== 'N/A' || $invoiceData['service_period']['end'] !== 'N/A')): ?>
-                                    <div class="item-period">Service Period: <?php echo $invoiceData['service_period']['start']; ?> to <?php echo $invoiceData['service_period']['end']; ?></div>
+                                    <div class="item-period">Service period: <?php echo $invoiceData['service_period']['start']; ?> – <?php echo $invoiceData['service_period']['end']; ?></div>
                                 <?php endif; ?>
                             </td>
                             <td class="text-center"><?php echo $item['quantity']; ?></td>
@@ -282,28 +300,25 @@ function generateInvoiceHTML($invoiceData) {
                 </tbody>
             </table>
 
-            <!-- Subtotal at bottom-right of table -->
             <div class="table-subtotal">Subtotal: <strong><?php echo $currency . number_format($subtotal, 2); ?></strong></div>
 
-            <!-- Bottom summary band (dark) -->
-            <div class="summary-band">
+            <table class="totals-table">
                 <?php if ($totalGst > 0): ?>
-                    <div><span class="label">GST (<?php echo $gstPercent; ?>%):</span> <span class="value"><?php echo $currency . number_format($totalGst, 2); ?></span></div>
+                    <tr><td>GST (<?php echo $gstPercent; ?>%)</td><td><?php echo $currency . number_format($totalGst, 2); ?></td></tr>
                 <?php endif; ?>
                 <?php if ($totalProcessingFee > 0): ?>
-                    <div><span class="label">Processing Fee:</span> <span class="value"><?php echo $currency . number_format($totalProcessingFee, 2); ?></span></div>
+                    <tr><td>Processing fee</td><td><?php echo $currency . number_format($totalProcessingFee, 2); ?></td></tr>
                 <?php endif; ?>
                 <?php if ($discountAmount > 0): ?>
-                    <div><span class="label">Coupon Discount<?php echo $couponCode ? ' (' . htmlspecialchars($couponCode) . ')' : ''; ?>:</span> <span class="value" style="color:#6ee7b7;">-<?php echo $currency . number_format($discountAmount, 2); ?></span></div>
+                    <tr><td>Coupon<?php echo $couponCode ? ' (' . htmlspecialchars($couponCode) . ')' : ''; ?></td><td class="discount">-<?php echo $currency . number_format($discountAmount, 2); ?></td></tr>
                 <?php endif; ?>
-                <div style="margin-top:8px; padding-top:8px; border-top:1px solid #4b5563;"><span class="label">Total Amount:</span> <span class="value"><?php echo $currency . number_format($discountAmount > 0 ? $finalTotal : $totalAmount, 2); ?></span></div>
-            </div>
+                <tr><td>Total</td><td><?php echo $currency . number_format($discountAmount > 0 ? $finalTotal : $totalAmount, 2); ?></td></tr>
+            </table>
 
-            <!-- Footer: company and contact -->
             <div class="invoice-footer">
-                <div style="font-weight:bold; color:#374151; margin-bottom:6px;"><?php echo htmlspecialchars($company['name']); ?></div>
-                <div>For any queries, contact us at <?php echo htmlspecialchars($company['email']); ?></div>
-                <div style="margin-top:8px; font-style:italic;">This is a computer-generated invoice.</div>
+                <div class="company"><?php echo htmlspecialchars($company['name']); ?></div>
+                <div>For queries: <?php echo htmlspecialchars($company['email']); ?></div>
+                <div style="margin-top:6px;">Computer-generated invoice.</div>
             </div>
         </div>
     </body>
